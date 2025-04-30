@@ -9,6 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import fr.troupel.whereami.data.model.Country
+import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.WhereAmITheme
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
@@ -41,6 +43,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val app = application as WhereAmI
+        Log.d("WAI", "Game: ${(app.game as GuessTheCountry).solution}")
 
         val landFilename = "HYP_HR_SR.pmtiles"
         val oceanFilename = "ne_10m_ocean.geojson"
@@ -147,7 +152,7 @@ class MainActivity : ComponentActivity() {
                             oceanLayer,
                             riverLayer,
                             lakeLayer,
-//                            countriesLayer,
+                            countriesLayer,
 //                            disputedLayer
                         )
                 )
