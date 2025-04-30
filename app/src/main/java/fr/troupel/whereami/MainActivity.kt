@@ -9,8 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import fr.troupel.whereami.data.model.Country
 import fr.troupel.whereami.domain.GuessTheCountry
+import fr.troupel.whereami.ui.theme.DisputedArea
+import fr.troupel.whereami.ui.theme.Ocean
+import fr.troupel.whereami.ui.theme.RiverAndLake
 import fr.troupel.whereami.ui.theme.WhereAmITheme
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
@@ -35,9 +37,6 @@ import org.maplibre.android.style.sources.RasterSource
 import java.io.File
 import java.net.URI
 
-private const val OCEAN_COLOR = "#83acce"
-private const val RIVER_AND_LAKE_COLOR = "#75acd9"
-private const val DISPUTED_AREA_COLOR = "#c5ced9"
 
 class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
@@ -65,14 +64,14 @@ class MainActivity : ComponentActivity() {
                 PropertyFactory.rasterOpacity(1.0f),
                 PropertyFactory.visibility(Property.VISIBLE),
                 PropertyFactory.rasterResampling(Property.RASTER_RESAMPLING_NEAREST),
-                //PropertyFactory.backgroundColor(OCEAN_COLOR),
+                //PropertyFactory.backgroundColor(Ocean),
             )
 
 
         val riverSource = GeoJsonSource("river-source", URI("asset://$riverFilename"))
         val riverLayer = LineLayer("river-layer", "river-source")
             .withProperties(
-                PropertyFactory.lineColor(RIVER_AND_LAKE_COLOR),
+                PropertyFactory.lineColor(RiverAndLake),
                 PropertyFactory.lineWidth(
                     interpolate(
                         linear(),
@@ -88,7 +87,7 @@ class MainActivity : ComponentActivity() {
 
         val lakeSource = GeoJsonSource("lake-source", URI("asset://$lakeFilename"))
         val lakeLayer = FillLayer("lake-layer", "lake-source").withProperties(
-            PropertyFactory.fillColor(RIVER_AND_LAKE_COLOR),
+            PropertyFactory.fillColor(RiverAndLake),
             PropertyFactory.visibility(Property.VISIBLE),
         )
         lakeLayer.setFilter(gte(zoom(), get("min_zoom")))
@@ -97,7 +96,7 @@ class MainActivity : ComponentActivity() {
         val oceanSource = GeoJsonSource("ocean-source", URI("asset://$oceanFilename"))
         val oceanLayer = FillLayer("ocean-layer", "ocean-source")
             .withProperties(
-                PropertyFactory.fillColor(OCEAN_COLOR),
+                PropertyFactory.fillColor(Ocean),
                 PropertyFactory.visibility(Property.VISIBLE),
             )
 
@@ -109,7 +108,7 @@ class MainActivity : ComponentActivity() {
 
         val disputedSource = GeoJsonSource("disputed-source", URI("asset://$disputedFilename"))
         val disputedLayer = FillLayer("disputed-layer", "disputed-source").withProperties(
-            PropertyFactory.fillColor(DISPUTED_AREA_COLOR),
+            PropertyFactory.fillColor(DisputedArea),
             PropertyFactory.visibility(Property.VISIBLE)
         )
 
@@ -144,9 +143,7 @@ class MainActivity : ComponentActivity() {
                         )
                         .withLayers(
                             BackgroundLayer("bg").withProperties(
-                                PropertyFactory.backgroundColor(
-                                    OCEAN_COLOR
-                                )
+                                PropertyFactory.backgroundColor(Ocean)
                             ),
                             rasterLandLayer,
                             oceanLayer,
