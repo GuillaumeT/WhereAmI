@@ -39,6 +39,7 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression.get
@@ -136,7 +137,8 @@ class MainActivity : ComponentActivity() {
         val countriesLayer = FillLayer("countries-layer", "shown-countries-source")
             .withProperties(
                 PropertyFactory.fillColor("purple"),
-                PropertyFactory.visibility(Property.VISIBLE)
+                PropertyFactory.fillOutlineColor("black"),
+                PropertyFactory.visibility(Property.VISIBLE),
             )
 
         val disputedSource = GeoJsonSource("disputed-source", URI("asset://$disputedFilename"))
@@ -145,10 +147,18 @@ class MainActivity : ComponentActivity() {
             PropertyFactory.visibility(Property.VISIBLE)
         )
 
-        mapView = MapView(this).apply {
+        val mapOptions = MapLibreMapOptions.createFromAttributes(this).apply {
+            rotateGesturesEnabled(false)
+            compassEnabled(false)
+            logoEnabled(false)
+            attributionEnabled(false)
+        }
+        mapView = MapView(this, mapOptions).apply {
             getMapAsync { map ->
                 map.setMinZoomPreference(.5)
                 map.setMaxZoomPreference(6.0)
+
+
 
                 map.addOnCameraMoveListener {
                     Log.d("WAI", "zoom: ${map.cameraPosition.zoom}")
@@ -159,8 +169,8 @@ class MainActivity : ComponentActivity() {
 //                )
 
                 map.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(20.0, 0.0))
-                    .zoom(1.0)
+                    .target(LatLng(0.0, 0.0))
+                    .zoom(1.2)
                     .build()
 
 
@@ -210,7 +220,7 @@ class MainActivity : ComponentActivity() {
 
     }
 
-    private fun guessCountry(countryName: String) {
+    private fun guessCountry(countryName: String): Country? {
         Log.d("Guess", "Guess is \"$countryName\"")
         val country = COUNTRIES.find { it.name.lowercase() == countryName.lowercase() }
         Log.d("Guess", "is it a valid country: $country")
@@ -226,14 +236,12 @@ class MainActivity : ComponentActivity() {
             // show the country on the map
             mapView.getMapAsync { map ->
                 map.getStyle { style ->
+                    // update shown countries
 
                     val shownCountriesSource = requireNotNull(
                         style.getSource("shown-countries-source") as GeoJsonSource
                     )
                     val shownCountries = guesses.toSet().map { g -> g.iso }
-
-                    Log.d("Guess", "shownCountries $shownCountries")
-                    Log.d("Guess", "countriesFeatures ${countriesFeatures.features()?.size}")
                     val shownFeatures = countriesFeatures.features()?.filter { feat ->
                         feat.getProperty("ISO_A2_EH").asString in shownCountries
                     }?.toTypedArray() ?: emptyArray()
@@ -242,28 +250,10 @@ class MainActivity : ComponentActivity() {
                     if (shownFeatures.isNotEmpty()) {
                         shownCountriesSource.setGeoJson(FeatureCollection.fromFeatures(shownFeatures))
                     }
-
-//                    shownCountriesSource.setGeoJson(FeatureCollection.fromJson(shownFeatures.toString()))
-                    //    FeatureCollection.fromFeatures(
-                    //        countriesFeatures.features()?.filter { feat ->
-                    //            // shownCountries.contains(feat.getProperty("ISO_A2_EH"))
-                    //            Log.d("Guess", "feature: ${feat.getProperty("ISO_A2_EH")}")
-                    //            false
-                    //        }?.toTypedArray()
-                    //    )
-                    //)
-
-                    Log.d("Guess", "Setting the filter to show the country on map")
-                    val countryLayer = style.getLayer("countries-layer") as? FillLayer
-                    //        countryLayer?.setFilter(
-                    //            `in`(
-                    //                get("ISO_A2_EH"),
-                    //                literal(guesses.map { c -> c.iso }.toSet())
-                    //            )
-                    //        )
                 }
             }
         }
+        return country
     }
 
     private fun copyAssetsIfNeeded(context: Context, assetName: String) {
@@ -336,7 +326,7 @@ fun GreetingPreview() {
 fun CountryInput(
     modifier: Modifier = Modifier,
     label: String = "Enter country",
-    onSubmit: (String) -> Unit
+    onSubmit: (String) -> Country?
 ) {
     var text by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -344,8 +334,8 @@ fun CountryInput(
     Box(modifier = modifier) {
 
         fun submit(value: String) {
-            onSubmit(value)
-            Log.d("WAI", "submitted text: $text")
+            val country = onSubmit(value.trim())
+            country?.let { text = "" }
         }
 
         TextField(
