@@ -5,10 +5,31 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import fr.troupel.whereami.data.COUNTRIES
+import fr.troupel.whereami.data.model.Country
 import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
@@ -34,12 +55,17 @@ import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.style.sources.RasterSource
+import org.maplibre.geojson.FeatureCollection
+import java.io.BufferedReader
 import java.io.File
 import java.net.URI
 
 
 class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
+    private lateinit var countriesFeatures: FeatureCollection
+    private var guesses: List<Country> = emptyList()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -101,10 +127,17 @@ class MainActivity : ComponentActivity() {
             )
 
         val countriesSource = GeoJsonSource("countries-source", URI("asset://$countriesFilename"))
-        val countriesLayer = FillLayer("countries-layer", "countries-source").withProperties(
-            PropertyFactory.fillColor("green"),
-            PropertyFactory.visibility(Property.VISIBLE)
-        )
+        val json = assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
+        countriesFeatures = FeatureCollection.fromJson(json)
+        //countriesFeatures = countriesSource.querySourceFeatures(null)
+        val shownCountriesSource =
+            GeoJsonSource("shown-countries-source", FeatureCollection.fromFeatures(emptyArray()))
+
+        val countriesLayer = FillLayer("countries-layer", "shown-countries-source")
+            .withProperties(
+                PropertyFactory.fillColor("purple"),
+                PropertyFactory.visibility(Property.VISIBLE)
+            )
 
         val disputedSource = GeoJsonSource("disputed-source", URI("asset://$disputedFilename"))
         val disputedLayer = FillLayer("disputed-layer", "disputed-source").withProperties(
@@ -138,7 +171,8 @@ class MainActivity : ComponentActivity() {
                             oceanSource,
                             riverSource,
                             lakeSource,
-                            countriesSource,
+                            //countriesSource,
+                            shownCountriesSource,
                             disputedSource
                         )
                         .withLayers(
@@ -156,7 +190,80 @@ class MainActivity : ComponentActivity() {
 
             }
         }
-        setContentView(mapView)
+        //setContentView(mapView)
+        setContent {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AndroidView(
+                    factory = { mapView },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                CountryInput(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 16.dp)
+                        .fillMaxWidth(0.9f),
+                    onSubmit = { guessCountry(it) }
+                )
+            }
+        }
+
+    }
+
+    private fun guessCountry(countryName: String) {
+        Log.d("Guess", "Guess is \"$countryName\"")
+        val country = COUNTRIES.find { it.name.lowercase() == countryName.lowercase() }
+        Log.d("Guess", "is it a valid country: $country")
+
+        country?.let {
+            // add guess
+            guesses += country
+
+            // is it the country we are looking for ?
+            val isFound = ((application as WhereAmI).game as GuessTheCountry).guess(it)
+            Log.d("Guess", "Was it the country to find ? $isFound")
+
+            // show the country on the map
+            mapView.getMapAsync { map ->
+                map.getStyle { style ->
+
+                    val shownCountriesSource = requireNotNull(
+                        style.getSource("shown-countries-source") as GeoJsonSource
+                    )
+                    val shownCountries = guesses.toSet().map { g -> g.iso }
+
+                    Log.d("Guess", "shownCountries $shownCountries")
+                    Log.d("Guess", "countriesFeatures ${countriesFeatures.features()?.size}")
+                    val shownFeatures = countriesFeatures.features()?.filter { feat ->
+                        feat.getProperty("ISO_A2_EH").asString in shownCountries
+                    }?.toTypedArray() ?: emptyArray()
+                    Log.d("Guess", "shownCountriesFeatures ${shownFeatures.size}")
+
+                    if (shownFeatures.isNotEmpty()) {
+                        shownCountriesSource.setGeoJson(FeatureCollection.fromFeatures(shownFeatures))
+                    }
+
+//                    shownCountriesSource.setGeoJson(FeatureCollection.fromJson(shownFeatures.toString()))
+                    //    FeatureCollection.fromFeatures(
+                    //        countriesFeatures.features()?.filter { feat ->
+                    //            // shownCountries.contains(feat.getProperty("ISO_A2_EH"))
+                    //            Log.d("Guess", "feature: ${feat.getProperty("ISO_A2_EH")}")
+                    //            false
+                    //        }?.toTypedArray()
+                    //    )
+                    //)
+
+                    Log.d("Guess", "Setting the filter to show the country on map")
+                    val countryLayer = style.getLayer("countries-layer") as? FillLayer
+                    //        countryLayer?.setFilter(
+                    //            `in`(
+                    //                get("ISO_A2_EH"),
+                    //                literal(guesses.map { c -> c.iso }.toSet())
+                    //            )
+                    //        )
+                }
+            }
+        }
     }
 
     private fun copyAssetsIfNeeded(context: Context, assetName: String) {
@@ -222,4 +329,50 @@ fun GreetingPreview() {
     WhereAmITheme {
         Greeting("Android")
     }
+}
+
+
+@Composable
+fun CountryInput(
+    modifier: Modifier = Modifier,
+    label: String = "Enter country",
+    onSubmit: (String) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    Box(modifier = modifier) {
+
+        fun submit(value: String) {
+            onSubmit(value)
+            Log.d("WAI", "submitted text: $text")
+        }
+
+        TextField(
+            value = text,
+            singleLine = true,
+            onValueChange = { newText: String -> text = newText },
+            placeholder = { Text("Type a country") },
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = {
+                submit(text)
+                keyboardController?.hide()
+            }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+
+        Button(
+            onClick = { submit(text) },
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .offset(x = (-32).dp)
+        ) {
+            Text("Guess")
+        }
+    }
+
 }
