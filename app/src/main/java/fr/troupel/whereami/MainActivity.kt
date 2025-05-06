@@ -52,12 +52,12 @@ import fr.troupel.whereami.util.stripAccents
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
-import org.maplibre.android.camera.CameraUpdate
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression.Interpolator
 import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.expressions.Expression.gte
 import org.maplibre.android.style.expressions.Expression.interpolate
@@ -146,13 +146,17 @@ class MainActivity : ComponentActivity() {
         val countriesSource = GeoJsonSource("countries-source", URI("asset://$countriesFilename"))
         val json = assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(json)
+        countriesFeatures.features()?.forEach {
+           it.properties()?.addProperty("color", "#c28cf5")
+        }
         //countriesFeatures = countriesSource.querySourceFeatures(null)
         val shownCountriesSource =
             GeoJsonSource("shown-countries-source", FeatureCollection.fromFeatures(emptyArray()))
 
         val countriesLayer = FillLayer("countries-layer", "shown-countries-source")
             .withProperties(
-                PropertyFactory.fillColor("purple"),
+//                PropertyFactory.fillColor("purple"),
+                PropertyFactory.fillColor(get("color")),
                 PropertyFactory.fillOutlineColor("black"),
                 PropertyFactory.visibility(Property.VISIBLE),
             )
@@ -237,7 +241,7 @@ class MainActivity : ComponentActivity() {
                     onValidGuess = {
                         it.latLng?.let {
                             mapView.getMapAsync { map ->
-                                map.moveCamera(CameraUpdateFactory.newLatLng(it))
+                                map.animateCamera(CameraUpdateFactory.newLatLng(it))
                             }
                         }
                     }
@@ -276,6 +280,14 @@ class MainActivity : ComponentActivity() {
                     val shownFeatures = countriesFeatures.features()?.filter { feat ->
                         feat.getProperty("ISO_A2_EH").asString in shownCountries
                     }?.toTypedArray() ?: emptyArray()
+
+                    if (isFound) {
+                        countriesFeatures.features()?.find {
+                            it.getProperty("ISO_A2_EH").asString == country.iso
+                        }?.let {
+                            it.properties()?.addProperty("color", "#74d69e")
+                        }
+                    }
                     Log.d("Guess", "shownCountriesFeatures ${shownFeatures.size}")
 
                     if (shownFeatures.isNotEmpty()) {
