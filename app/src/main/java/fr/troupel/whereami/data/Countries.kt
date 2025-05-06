@@ -38,7 +38,7 @@ private fun countriesFromAssets(context: Context): HashSet<Country> {
         .use { it.readText() }
 
     return json.decodeFromString<FeatureCollection>(raw).features.map {
-        Country(it.properties.ISO_A2_EH, it.properties.NAME)
+        Country(it.properties.ISO_A2_EH, it.properties.NAME_FR)
     }.filter { it.iso != "-99" }.toHashSet()
 }
 
@@ -57,6 +57,6 @@ private data class Feature(
 @Serializable
 private data class FeatureProperties(
     val scalerank: Int,
-    val NAME: String,
+    val NAME_FR: String,
     val ISO_A2_EH: String,
 )

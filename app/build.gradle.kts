@@ -49,7 +49,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation("org.maplibre.gl:android-sdk:11.8.2")
+    implementation("org.maplibre.gl:android-sdk:11.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -4,27 +4,35 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -35,6 +43,8 @@ import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
 import fr.troupel.whereami.ui.theme.RiverAndLake
 import fr.troupel.whereami.ui.theme.WhereAmITheme
+import fr.troupel.whereami.util.jaroWinkler
+import fr.troupel.whereami.util.stripAccents
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
@@ -213,25 +223,33 @@ class MainActivity : ComponentActivity() {
                         .align(Alignment.TopCenter)
                         .offset(y = 16.dp)
                         .fillMaxWidth(0.9f),
-                    onSubmit = { guessCountry(it) }
+                    onSubmit = { guessCountry(it) },
+                    onWin = {
+                        Log.d("WAI", "COUNTRY FOUND!")
+                        (application as WhereAmI).game = GuessTheCountry()
+                    }
                 )
             }
         }
 
     }
 
-    private fun guessCountry(countryName: String): Country? {
+    private fun guessCountry(countryName: String): CountryGuessResult {
         Log.d("Guess", "Guess is \"$countryName\"")
-        val country = COUNTRIES.find { it.name.lowercase() == countryName.lowercase() }
+        val country = COUNTRIES.find {
+            it.name.trim().stripAccents().lowercase() == countryName.trim().stripAccents()
+                .lowercase()
+                .trim()
+        }
+        val game = ((application as WhereAmI).game as GuessTheCountry)
+
         Log.d("Guess", "is it a valid country: $country")
+        // is it the country we are looking for ?
+        val isFound = if (country != null) game.guess(country) else false
+        Log.d("Guess", "Was it the country to find ? $isFound")
 
         country?.let {
             // add guess
-            guesses += country
-
-            // is it the country we are looking for ?
-            val isFound = ((application as WhereAmI).game as GuessTheCountry).guess(it)
-            Log.d("Guess", "Was it the country to find ? $isFound")
 
             // show the country on the map
             mapView.getMapAsync { map ->
@@ -241,7 +259,7 @@ class MainActivity : ComponentActivity() {
                     val shownCountriesSource = requireNotNull(
                         style.getSource("shown-countries-source") as GeoJsonSource
                     )
-                    val shownCountries = guesses.toSet().map { g -> g.iso }
+                    val shownCountries = game.guesses.toSet().map { g -> g.iso }
                     val shownFeatures = countriesFeatures.features()?.filter { feat ->
                         feat.getProperty("ISO_A2_EH").asString in shownCountries
                     }?.toTypedArray() ?: emptyArray()
@@ -252,8 +270,28 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+
+            Toast.makeText(this, country.name, Toast.LENGTH_SHORT).show()
+            if (isFound) Toast.makeText(
+                this,
+                "Congrats!!! you found the country",
+                Toast.LENGTH_LONG
+            ).show()
         }
-        return country
+
+        val suggestions = if (country == null) COUNTRIES.filter {
+            val score = jaroWinkler(
+                countryName.trim().stripAccents().lowercase(),
+                it.name.trim().stripAccents().lowercase()
+            )
+            score > .85
+        } else emptyList()
+
+        return CountryGuessResult(
+            isCountryGuessed = isFound,
+            country = country,
+            suggestions = suggestions
+        )
     }
 
     private fun copyAssetsIfNeeded(context: Context, assetName: String) {
@@ -322,47 +360,108 @@ fun GreetingPreview() {
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CountryInput(
     modifier: Modifier = Modifier,
-    label: String = "Enter country",
-    onSubmit: (String) -> Country?
+    label: String = "Enter country name",
+    onSubmit: (String) -> CountryGuessResult,
+    onWin: () -> Unit
 ) {
     var text by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var searchResults by remember { mutableStateOf(listOf<Country>()) }
 
     Box(modifier = modifier) {
-
-        fun submit(value: String) {
-            val country = onSubmit(value.trim())
-            country?.let { text = "" }
-        }
-
-        TextField(
-            value = text,
-            singleLine = true,
-            onValueChange = { newText: String -> text = newText },
-            placeholder = { Text("Type a country") },
-            keyboardOptions = KeyboardOptions.Default.copy(
-                imeAction = ImeAction.Done
-            ),
-            keyboardActions = KeyboardActions(onDone = {
-                submit(text)
-                keyboardController?.hide()
-            }),
+        SearchBar(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        )
-
-        Button(
-            onClick = { submit(text) },
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .offset(x = (-32).dp)
+                .align(Alignment.TopCenter)
+                .semantics { traversalIndex = 0f },
+            inputField = {
+                SearchBarDefaults.InputField(
+                    modifier = Modifier.onFocusChanged { },
+                    query = text,
+                    onQueryChange = { newText: String -> text = newText },
+                    onSearch = {
+                        // TODO refactor so that we only have one place where the country is submitted.
+                        val result = onSubmit(text)
+                        if (result.isCountryGuessed) {
+                            onWin()
+                        }
+                        if (result.country != null) {
+                            text = ""
+                            expanded = false
+                        } else {
+                            expanded = true
+                            searchResults = result.suggestions
+                        }
+                    },
+                    expanded = expanded,
+                    onExpandedChange = {},
+                    placeholder = { Text(label) }
+                )
+            },
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
         ) {
-            Text("Guess")
+            // Display search results in a scrollable column
+            Column(
+                Modifier
+                    .heightIn(max = 50.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                if (searchResults.isEmpty())
+                    Text("No country found")
+                else
+                    searchResults.forEach { result ->
+                        ListItem(
+                            headlineContent = { Text(result.name) },
+                            modifier = Modifier
+                                .clickable {
+                                    //    textFieldState.edit { replace(0, length, result) }
+                                    onSubmit(result.name)
+                                    text = ""
+                                    expanded = false
+                                    // TODO refactor so that we only have one place where the country is submitted.
+                                }
+                                .fillMaxWidth()
+                        )
+                    }
+            }
         }
+
+        // TextField(
+        //     value = text,
+        //     singleLine = true,
+        //     onValueChange = { newText: String -> text = newText },
+        //     placeholder = { Text("Type a country") },
+        //     keyboardOptions = KeyboardOptions.Default.copy(
+        //         imeAction = ImeAction.Done
+        //     ),
+        //     keyboardActions = KeyboardActions(onDone = {
+        //         submit(text)
+        //         keyboardController?.hide()
+        //     }),
+        //     modifier = Modifier
+        //         .fillMaxWidth()
+        //         .padding(16.dp)
+        // )
+
+        // Button(
+        //     onClick = { submit(text) },
+        //     modifier = Modifier
+        //         .align(Alignment.CenterEnd)
+        //         .offset(x = (-32).dp)
+        // ) {
+        //     Text("Guess")
+        // }
     }
 
 }
+
+data class CountryGuessResult(
+    val isCountryGuessed: Boolean,
+    val country: Country?,
+    val suggestions: List<Country> = emptyList(),
+)
