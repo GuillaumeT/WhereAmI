@@ -1,5 +1,7 @@
 package fr.troupel.whereami
 
+//import androidx.compose.material.icons.Icons
+//import androidx.compose.material.icons.filled.Search
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -12,11 +14,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -373,33 +377,38 @@ fun CountryInput(
     var expanded by rememberSaveable { mutableStateOf(false) }
     var searchResults by remember { mutableStateOf(listOf<Country>()) }
 
+    fun submit(value: String) {
+        text = value // most probably already the case but not in case of suggestion selection
+        val result = onSubmit(text)
+        if (result.isCountryGuessed) {
+            onWin()
+        }
+        if (result.country != null) {
+            text = ""
+            expanded = false
+        } else {
+            expanded = true
+            searchResults = result.suggestions
+        }
+    }
+
     Box(modifier = modifier) {
         SearchBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .semantics { traversalIndex = 0f },
             inputField = {
+                // TODO custom InputField to disable keyboard suggestions and have access to TextField(keyboardOptions)
+                //   keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrect = false),
                 SearchBarDefaults.InputField(
                     modifier = Modifier.onFocusChanged { },
                     query = text,
                     onQueryChange = { newText: String -> text = newText },
-                    onSearch = {
-                        // TODO refactor so that we only have one place where the country is submitted.
-                        val result = onSubmit(text)
-                        if (result.isCountryGuessed) {
-                            onWin()
-                        }
-                        if (result.country != null) {
-                            text = ""
-                            expanded = false
-                        } else {
-                            expanded = true
-                            searchResults = result.suggestions
-                        }
-                    },
+                    onSearch = ::submit,
                     expanded = expanded,
                     onExpandedChange = {},
-                    placeholder = { Text(label) }
+                    placeholder = { Text(label) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                 )
             },
             expanded = expanded,
@@ -408,26 +417,22 @@ fun CountryInput(
             // Display search results in a scrollable column
             Column(
                 Modifier
-                    .heightIn(max = 50.dp)
+//                    .heightIn(max = 250.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 if (searchResults.isEmpty())
                     Text("No country found")
-                else
+                else {
+                    Log.d("Guess", "$searchResults")
                     searchResults.forEach { result ->
                         ListItem(
                             headlineContent = { Text(result.name) },
                             modifier = Modifier
-                                .clickable {
-                                    //    textFieldState.edit { replace(0, length, result) }
-                                    onSubmit(result.name)
-                                    text = ""
-                                    expanded = false
-                                    // TODO refactor so that we only have one place where the country is submitted.
-                                }
+                                .clickable { submit(result.name) }
                                 .fillMaxWidth()
                         )
                     }
+                }
             }
         }
 
