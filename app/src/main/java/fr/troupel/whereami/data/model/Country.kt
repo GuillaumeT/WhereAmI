@@ -1,6 +1,12 @@
 package fr.troupel.whereami.data.model
 
-class Country(val iso: String, val name: String) {
+import org.maplibre.android.geometry.LatLng
+
+class Country(
+    val iso: String,
+    val name: String,
+    val latLng: LatLng? = null,
+) {
 
     override fun toString(): String {
         return this.name

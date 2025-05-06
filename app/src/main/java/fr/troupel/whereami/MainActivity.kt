@@ -52,6 +52,8 @@ import fr.troupel.whereami.util.stripAccents
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdate
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
@@ -231,6 +233,13 @@ class MainActivity : ComponentActivity() {
                     onWin = {
                         Log.d("WAI", "COUNTRY FOUND!")
                         (application as WhereAmI).game = GuessTheCountry()
+                    },
+                    onValidGuess = {
+                        it.latLng?.let {
+                            mapView.getMapAsync { map ->
+                                map.moveCamera(CameraUpdateFactory.newLatLng(it))
+                            }
+                        }
                     }
                 )
             }
@@ -370,7 +379,8 @@ fun CountryInput(
     modifier: Modifier = Modifier,
     label: String = "Enter country name",
     onSubmit: (String) -> CountryGuessResult,
-    onWin: () -> Unit
+    onWin: () -> Unit,
+    onValidGuess: (Country) -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -386,6 +396,7 @@ fun CountryInput(
         if (result.country != null) {
             text = ""
             expanded = false
+            onValidGuess(result.country)
         } else {
             expanded = true
             searchResults = result.suggestions

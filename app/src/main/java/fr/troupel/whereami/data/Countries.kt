@@ -5,6 +5,7 @@ import android.util.Log
 import fr.troupel.whereami.data.model.Country
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.maplibre.android.geometry.LatLng
 import java.util.Locale
 
 var COUNTRIES: HashSet<Country> = HashSet()
@@ -38,7 +39,7 @@ private fun countriesFromAssets(context: Context): HashSet<Country> {
         .use { it.readText() }
 
     return json.decodeFromString<FeatureCollection>(raw).features.map {
-        Country(it.properties.ISO_A2_EH, it.properties.NAME_FR)
+        Country(it.properties.ISO_A2_EH, it.properties.NAME_FR, LatLng(it.properties.LABEL_Y, it.properties.LABEL_X))
     }.filter { it.iso != "-99" }.toHashSet()
 }
 
@@ -59,4 +60,6 @@ private data class FeatureProperties(
     val scalerank: Int,
     val NAME_FR: String,
     val ISO_A2_EH: String,
+    val LABEL_X: Double,
+    val LABEL_Y: Double,
 )
