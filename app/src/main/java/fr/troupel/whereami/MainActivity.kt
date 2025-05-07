@@ -57,7 +57,6 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression.Interpolator
 import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.expressions.Expression.gte
 import org.maplibre.android.style.expressions.Expression.interpolate
@@ -147,7 +146,7 @@ class MainActivity : ComponentActivity() {
         val json = assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(json)
         countriesFeatures.features()?.forEach {
-           it.properties()?.addProperty("color", "#c28cf5")
+            it.properties()?.addProperty("color", "#c28cf5")
         }
         //countriesFeatures = countriesSource.querySourceFeatures(null)
         val shownCountriesSource =
@@ -210,11 +209,11 @@ class MainActivity : ComponentActivity() {
                                 PropertyFactory.backgroundColor(Ocean)
                             ),
                             rasterLandLayer,
+                            countriesLayer,
+                            // disputedLayer,
                             oceanLayer,
                             riverLayer,
                             lakeLayer,
-                            countriesLayer,
-//                            disputedLayer
                         )
                 )
 
