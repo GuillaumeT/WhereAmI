@@ -1,28 +1,27 @@
 package fr.troupel.whereami.data
 
 import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import fr.troupel.whereami.data.model.Country
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.maplibre.android.geometry.LatLng
 import java.util.Locale
 
-public const val ID_CODE = "ADM0_A3"
+const val ID_CODE = "ADM0_A3"
+val COUNTRIES: HashMap<String, Country> = HashMap()
 
-var COUNTRIES: HashSet<Country> = HashSet()
-
+@Deprecated("Use initCountriesFromAssets")
 fun initCountriesFromLocale() {
-    COUNTRIES = countriesFromLocale()
+    COUNTRIES.clear()
+    COUNTRIES.putAll(countriesFromLocale().map { Pair(it.iso, it) })
 }
 
 fun initCountriesFromAssets(context: Context) {
-    COUNTRIES = countriesFromAssets(context)
-
-    // val cL = countriesFromLocale()
-    // val cA = countriesFromAssets(context)
-    // Log.d("WAI", "locale:${cL.size} assets:${cA.size}")
-    // Log.d("WAI", "locale not in assets:${cL.filterNot { cA.contains(it) }.map { it.iso + ":" + it.name }}")
-    // Log.d("WAI", "assets not in locale:${cA.filterNot { cL.contains(it) }.map { it.iso + ":" + it.name }}")
+    COUNTRIES.clear()
+    COUNTRIES.putAll(countriesFromAssets(context).map { Pair(it.iso, it) })
+    setCountriesDistances(context)
 }
 
 private fun countriesFromLocale(): HashSet<Country> {
@@ -46,6 +45,23 @@ private fun countriesFromAssets(context: Context): HashSet<Country> {
             LatLng(it.properties.LABEL_Y, it.properties.LABEL_X)
         )
     }.filter { it.iso != "-99" }.toHashSet()
+}
+
+private fun setCountriesDistances(context: Context) {
+    val gson = Gson()
+    val distances: Map<String, Map<String, Double>> =
+        gson.fromJson(
+            context.assets.open("countries_distances.json").reader(),
+            object : TypeToken<Map<String, Map<String, Double>>>() {}.type
+        )
+
+    distances.forEach { (isoA, distanceAtoB) ->
+        val countryA = COUNTRIES[isoA]!!
+        countryA.distanceTo.clear()
+        countryA.distanceTo.putAll(distanceAtoB.mapKeys {(isoB, _)  ->
+            COUNTRIES[isoB]!!
+        })
+    }
 }
 
 @Serializable

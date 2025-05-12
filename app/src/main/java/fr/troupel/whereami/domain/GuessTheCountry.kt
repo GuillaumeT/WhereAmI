@@ -16,7 +16,7 @@ class GuessTheCountry : Game("Guess the Country") {
         require(COUNTRIES.isNotEmpty()) {
             "Country list was not initialized. Could not initialize random country to guess."
         }
-        solution = COUNTRIES.random()
+        solution = COUNTRIES.values.random()
         Log.i("GuessTheCountry", "Game initialized with country to guess: $solution")
     }
 

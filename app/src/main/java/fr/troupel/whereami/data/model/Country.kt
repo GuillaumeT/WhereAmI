@@ -6,6 +6,7 @@ class Country(
     val iso: String,
     val name: String,
     val latLng: LatLng? = null,
+    val distanceTo: HashMap<Country, Double> = HashMap()
 ) {
 
     override fun toString(): String {

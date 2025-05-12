@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import fr.troupel.whereami.data.COUNTRIES
+import fr.troupel.whereami.data.ID_CODE
 import fr.troupel.whereami.data.model.Country
 import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.DisputedArea
@@ -61,6 +62,7 @@ import org.maplibre.android.style.expressions.Expression.get
 import org.maplibre.android.style.expressions.Expression.gte
 import org.maplibre.android.style.expressions.Expression.interpolate
 import org.maplibre.android.style.expressions.Expression.linear
+import org.maplibre.android.style.expressions.Expression.rgb
 import org.maplibre.android.style.expressions.Expression.stop
 import org.maplibre.android.style.expressions.Expression.zoom
 import org.maplibre.android.style.layers.BackgroundLayer
@@ -76,17 +78,30 @@ import java.io.BufferedReader
 import java.io.File
 import java.net.URI
 
+private const val lakeSourceId = "lake-source"
+private const val lakeLayerId = "lake-layer"
+private const val rasterLandSourceId = "land-source"
+private const val rasterLandLayerId = "land"
+private const val riverSourceId = "river-source"
+private const val riverLayerId = "river-layer"
+private const val oceanSourceId = "ocean-source"
+private const val oceanLayerId = "ocean-layer"
+private const val disputedSourceId = "disputed-source"
+private const val disputedLayerId = "disputed-layer"
+private const val countriesSourceId = "countries-source"
+private const val shownCountriesSourceId = "shown-countries-source"
+private const val countriesLayerId = "countries-layer"
 
 class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
     private lateinit var countriesFeatures: FeatureCollection
-    private var guesses: List<Country> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val app = application as WhereAmI
-        Log.d("WAI", "Game: ${(app.game as GuessTheCountry).solution}")
+        val solution =(app.game as GuessTheCountry).solution
+        Log.d("WAI", "Game: $solution")
 
         val landFilename = "HYP_HR_SR.pmtiles"
         val oceanFilename = "ne_10m_ocean.geojson"
@@ -100,8 +115,8 @@ class MainActivity : ComponentActivity() {
         MapLibre.getInstance(this, null, WellKnownTileServer.Mapbox)
         val landURI = Uri.fromFile(File(filesDir, landFilename))
 
-        val rasterLandSource = RasterSource("land-source", "pmtiles://$landURI")
-        val rasterLandLayer = RasterLayer("land", "land-source")
+        val rasterLandSource = RasterSource(rasterLandSourceId, "pmtiles://$landURI")
+        val rasterLandLayer = RasterLayer(rasterLandLayerId, rasterLandSourceId)
             .withProperties(
                 PropertyFactory.rasterOpacity(1.0f),
                 PropertyFactory.visibility(Property.VISIBLE),
@@ -110,8 +125,8 @@ class MainActivity : ComponentActivity() {
             )
 
 
-        val riverSource = GeoJsonSource("river-source", URI("asset://$riverFilename"))
-        val riverLayer = LineLayer("river-layer", "river-source")
+        val riverSource = GeoJsonSource(riverSourceId, URI("asset://$riverFilename"))
+        val riverLayer = LineLayer(riverLayerId, riverSourceId)
             .withProperties(
                 PropertyFactory.lineColor(RiverAndLake),
                 PropertyFactory.lineWidth(
@@ -127,41 +142,54 @@ class MainActivity : ComponentActivity() {
             )
         riverLayer.setFilter(gte(zoom(), get("min_zoom")))
 
-        val lakeSource = GeoJsonSource("lake-source", URI("asset://$lakeFilename"))
-        val lakeLayer = FillLayer("lake-layer", "lake-source").withProperties(
+        val lakeSource = GeoJsonSource(lakeSourceId, URI("asset://$lakeFilename"))
+        val lakeLayer = FillLayer(lakeLayerId, lakeSourceId).withProperties(
             PropertyFactory.fillColor(RiverAndLake),
             PropertyFactory.visibility(Property.VISIBLE),
         )
         lakeLayer.setFilter(gte(zoom(), get("min_zoom")))
 
-        //val oceanSource = GeoJsonSource("ocean-source",URI("asset://$oceanFileName"))
-        val oceanSource = GeoJsonSource("ocean-source", URI("asset://$oceanFilename"))
-        val oceanLayer = FillLayer("ocean-layer", "ocean-source")
+        val oceanSource = GeoJsonSource(oceanSourceId, URI("asset://$oceanFilename"))
+        val oceanLayer = FillLayer(oceanLayerId, oceanSourceId)
             .withProperties(
                 PropertyFactory.fillColor(Ocean),
                 PropertyFactory.visibility(Property.VISIBLE),
             )
 
-        val countriesSource = GeoJsonSource("countries-source", URI("asset://$countriesFilename"))
+        val countriesSource = GeoJsonSource(countriesSourceId, URI("asset://$countriesFilename"))
         val json = assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(json)
         countriesFeatures.features()?.forEach {
+            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
+            it.properties()?.addProperty("distance", country.distanceTo[solution]?:-1)
             it.properties()?.addProperty("color", "#c28cf5")
         }
         //countriesFeatures = countriesSource.querySourceFeatures(null)
         val shownCountriesSource =
-            GeoJsonSource("shown-countries-source", FeatureCollection.fromFeatures(emptyArray()))
+            GeoJsonSource(shownCountriesSourceId, FeatureCollection.fromFeatures(emptyArray()))
 
-        val countriesLayer = FillLayer("countries-layer", "shown-countries-source")
+        val countriesLayer = FillLayer(countriesLayerId, shownCountriesSourceId)
             .withProperties(
-//                PropertyFactory.fillColor("purple"),
-                PropertyFactory.fillColor(get("color")),
+                // PropertyFactory.fillColor("purple"),
+                //PropertyFactory.fillColor(get("color")),
+                PropertyFactory.fillColor(
+                    interpolate(
+                        linear(),
+                        get("distance"),
+                        stop(-1, rgb(0,255,20)),
+                        stop(0, rgb(50,200,20)),
+                        stop(2000, rgb(100,150,20)),
+                        stop(5000,rgb(139,100,20)),
+                        stop(15000,rgb(139,0,20))
+
+                    )
+                ),
                 PropertyFactory.fillOutlineColor("black"),
                 PropertyFactory.visibility(Property.VISIBLE),
             )
 
-        val disputedSource = GeoJsonSource("disputed-source", URI("asset://$disputedFilename"))
-        val disputedLayer = FillLayer("disputed-layer", "disputed-source").withProperties(
+        val disputedSource = GeoJsonSource(disputedSourceId, URI("asset://$disputedFilename"))
+        val disputedLayer = FillLayer(disputedLayerId, disputedSourceId).withProperties(
             PropertyFactory.fillColor(DisputedArea),
             PropertyFactory.visibility(Property.VISIBLE)
         )
@@ -200,7 +228,7 @@ class MainActivity : ComponentActivity() {
                             oceanSource,
                             riverSource,
                             lakeSource,
-                            //countriesSource,
+                            countriesSource,
                             shownCountriesSource,
                             disputedSource
                         )
@@ -252,7 +280,7 @@ class MainActivity : ComponentActivity() {
 
     private fun guessCountry(countryName: String): CountryGuessResult {
         Log.d("Guess", "Guess is \"$countryName\"")
-        val country = COUNTRIES.find {
+        val country = COUNTRIES.values.find {
             it.name.trim().stripAccents().lowercase() == countryName.trim().stripAccents()
                 .lowercase()
                 .trim()
@@ -273,16 +301,16 @@ class MainActivity : ComponentActivity() {
                     // update shown countries
 
                     val shownCountriesSource = requireNotNull(
-                        style.getSource("shown-countries-source") as GeoJsonSource
+                        style.getSource(shownCountriesSourceId) as GeoJsonSource
                     )
                     val shownCountries = game.guesses.toSet().map { g -> g.iso }
                     val shownFeatures = countriesFeatures.features()?.filter { feat ->
-                        feat.getProperty("ISO_A2_EH").asString in shownCountries
+                        feat.getProperty(ID_CODE).asString in shownCountries
                     }?.toTypedArray() ?: emptyArray()
 
                     if (isFound) {
                         countriesFeatures.features()?.find {
-                            it.getProperty("ISO_A2_EH").asString == country.iso
+                            it.getProperty(ID_CODE).asString == country.iso
                         }?.let {
                             it.properties()?.addProperty("color", "#74d69e")
                         }
@@ -295,7 +323,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            Toast.makeText(this, country.name, Toast.LENGTH_SHORT).show()
+            val distance = game.solution.distanceTo[country]
+            Toast.makeText(
+                this,
+                "${country.name}\ndistance: ${"%.2f".format(distance)}km",
+                Toast.LENGTH_SHORT
+            ).show()
             if (isFound) Toast.makeText(
                 this,
                 "Congrats!!! you found the country",
@@ -303,7 +336,7 @@ class MainActivity : ComponentActivity() {
             ).show()
         }
 
-        val suggestions = if (country == null) COUNTRIES.filter {
+        val suggestions = if (country == null) COUNTRIES.values.filter {
             val score = jaroWinkler(
                 countryName.trim().stripAccents().lowercase(),
                 it.name.trim().stripAccents().lowercase()

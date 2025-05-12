@@ -104,7 +104,7 @@ abstract class ComputeMinDistancesTask @Inject constructor(
 
         // Merge partial JSON outputs
         val gson = Gson()
-        val finalMap = mutableMapOf<String, Map<String, Double>>()
+        var finalMap = mutableMapOf<String, Map<String, Double>>()
         partialDir.listFiles { f -> f.extension == "json" }?.forEach { file ->
             val slice: MutableMap<String, Map<String, Double>> = gson.fromJson(
                 file.readText(), object : TypeToken<Map<String, Map<String, Double>>>() {}.type
@@ -119,6 +119,12 @@ abstract class ComputeMinDistancesTask @Inject constructor(
             }
         }
 
+        // Sort map
+        finalMap = finalMap.mapValues { (_, inner) ->
+            inner.toSortedMap()
+        }.toSortedMap()
+
+
         // last check that we have perfect one to one
         require(finalMap.all {
             it.value.size + 1 == finalMap.size
@@ -126,12 +132,7 @@ abstract class ComputeMinDistancesTask @Inject constructor(
 
         // Write merged result
         val outputFile = outputJson.asFile.get()
-        outputFile.writeText(
-            gson.toJson(
-                finalMap.toSortedMap().map {
-                    mapOf(it.key to it.value.toSortedMap())
-                })
-        )
+        outputFile.writeText(gson.toJson(finalMap))
 
         // Log overall completion
         logger.lifecycle("Completed merging ${finalMap.size} country distance entries.")
