@@ -52,6 +52,7 @@ dependencies {
 
     implementation(libs.maplibre.android.sdk)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.mapbox.sdk.turf)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -61,4 +62,15 @@ dependencies {
 
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+tasks.register<ComputeMinDistancesTask>("computeMinDistances") {
+    countriesGeoJson =
+        layout.projectDirectory.file("src/main/assets/ne_10m_admin_0_countries.geojson")
+    outputJson = layout.buildDirectory.file("distances/all.json")
+}
+
+tasks.register<CheckCountriesUniqueIDTask>("checkCountriesUniqueID") {
+    countriesGeoJsonFile =
+        layout.projectDirectory.file("src/main/assets/ne_10m_admin_0_countries.geojson")
 }
