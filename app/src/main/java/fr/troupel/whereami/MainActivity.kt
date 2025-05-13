@@ -77,6 +77,7 @@ import org.maplibre.geojson.FeatureCollection
 import java.io.BufferedReader
 import java.io.File
 import java.net.URI
+import kotlin.random.Random
 
 private const val lakeSourceId = "lake-source"
 private const val lakeLayerId = "lake-layer"
@@ -208,7 +209,7 @@ class MainActivity : ComponentActivity() {
 
 
                 map.addOnCameraMoveListener {
-                    Log.d("WAI", "zoom: ${map.cameraPosition.zoom}")
+                    Log.d("WAI", "camera: ${map.cameraPosition}")
                 }
 //                map.setStyle(
 //                    Style.Builder()
@@ -216,7 +217,7 @@ class MainActivity : ComponentActivity() {
 //                )
 
                 map.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(0.0, 0.0))
+                    .target(LatLng(.0, Random.nextDouble(-180.0, 180.0)))
                     .zoom(1.2)
                     .build()
 
