@@ -206,21 +206,15 @@ class MainActivity : ComponentActivity() {
                 map.setMinZoomPreference(.5)
                 map.setMaxZoomPreference(6.0)
 
+                // map.setStyle(Style.Builder().fromUri("https://raw.githubusercontent.com/wipfli/foursquare-os-places-pmtiles/refs/heads/main/style.json"))
 
-
-                map.addOnCameraMoveListener {
-                    Log.d("WAI", "camera: ${map.cameraPosition}")
-                }
-//                map.setStyle(
-//                    Style.Builder()
-//                        .fromUri("https://raw.githubusercontent.com/wipfli/foursquare-os-places-pmtiles/refs/heads/main/style.json")
-//                )
-
+                // map.addOnCameraMoveListener {
+                //     Log.d("WAI", "camera: ${map.cameraPosition}")
+                // }
                 map.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(.0, Random.nextDouble(-180.0, 180.0)))
                     .zoom(1.2)
                     .build()
-
 
                 map.setStyle(
                     Style.Builder()
@@ -279,6 +273,28 @@ class MainActivity : ComponentActivity() {
 
     }
 
+    private fun draw() {
+        val game = ((application as WhereAmI).game as GuessTheCountry)
+
+        // show the country on the map
+        mapView.getMapAsync { map ->
+            map.getStyle { style ->
+                // update shown countries
+                val shownCountriesSource = requireNotNull(
+                    style.getSource(shownCountriesSourceId) as GeoJsonSource
+                )
+                val shownCountries = game.guesses.toSet().map { g -> g.iso }
+                val shownFeatures = countriesFeatures.features()?.filter { feat ->
+                    feat.getProperty(ID_CODE).asString in shownCountries
+                }?.toTypedArray() ?: emptyArray()
+
+                if (shownFeatures.isNotEmpty()) {
+                    shownCountriesSource.setGeoJson(FeatureCollection.fromFeatures(shownFeatures))
+                }
+            }
+        }
+    }
+
     private fun guessCountry(countryName: String): CountryGuessResult {
         Log.d("Guess", "Guess is \"$countryName\"")
         val country = COUNTRIES.values.find {
@@ -294,35 +310,7 @@ class MainActivity : ComponentActivity() {
         Log.d("Guess", "Was it the country to find ? $isFound")
 
         country?.let {
-            // add guess
-
-            // show the country on the map
-            mapView.getMapAsync { map ->
-                map.getStyle { style ->
-                    // update shown countries
-
-                    val shownCountriesSource = requireNotNull(
-                        style.getSource(shownCountriesSourceId) as GeoJsonSource
-                    )
-                    val shownCountries = game.guesses.toSet().map { g -> g.iso }
-                    val shownFeatures = countriesFeatures.features()?.filter { feat ->
-                        feat.getProperty(ID_CODE).asString in shownCountries
-                    }?.toTypedArray() ?: emptyArray()
-
-                    if (isFound) {
-                        countriesFeatures.features()?.find {
-                            it.getProperty(ID_CODE).asString == country.iso
-                        }?.let {
-                            it.properties()?.addProperty("color", "#74d69e")
-                        }
-                    }
-                    Log.d("Guess", "shownCountriesFeatures ${shownFeatures.size}")
-
-                    if (shownFeatures.isNotEmpty()) {
-                        shownCountriesSource.setGeoJson(FeatureCollection.fromFeatures(shownFeatures))
-                    }
-                }
-            }
+            draw()
 
             val distance = game.solution.distanceTo[country]
             if (!isFound) {
@@ -374,6 +362,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         mapView.onResume()
+        draw()
     }
 
     override fun onPause() {
