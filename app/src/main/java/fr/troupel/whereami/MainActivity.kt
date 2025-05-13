@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val app = application as WhereAmI
-        val solution =(app.game as GuessTheCountry).solution
+        val solution = (app.game as GuessTheCountry).solution
         Log.d("WAI", "Game: $solution")
 
         val landFilename = "HYP_HR_SR.pmtiles"
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
         countriesFeatures = FeatureCollection.fromJson(json)
         countriesFeatures.features()?.forEach {
             val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
-            it.properties()?.addProperty("distance", country.distanceTo[solution]?:-1)
+            it.properties()?.addProperty("distance", country.distanceTo[solution] ?: -1)
             it.properties()?.addProperty("color", "#c28cf5")
         }
         //countriesFeatures = countriesSource.querySourceFeatures(null)
@@ -177,11 +177,11 @@ class MainActivity : ComponentActivity() {
                     interpolate(
                         linear(),
                         get("distance"),
-                        stop(-1, rgb(0,255,20)),
-                        stop(0, rgb(50,200,20)),
-                        stop(2000, rgb(100,150,20)),
-                        stop(5000,rgb(139,100,20)),
-                        stop(15000,rgb(139,0,20))
+                        stop(-1, rgb(0, 255, 20)),
+                        stop(0, rgb(50, 200, 20)),
+                        stop(2000, rgb(100, 150, 20)),
+                        stop(5000, rgb(139, 100, 20)),
+                        stop(15000, rgb(139, 0, 20))
 
                     )
                 ),
@@ -325,16 +325,19 @@ class MainActivity : ComponentActivity() {
             }
 
             val distance = game.solution.distanceTo[country]
-            Toast.makeText(
-                this,
-                "${country.name}\ndistance: ${"%.2f".format(distance)}km",
-                Toast.LENGTH_SHORT
-            ).show()
-            if (isFound) Toast.makeText(
-                this,
-                "Congrats!!! you found the country",
-                Toast.LENGTH_LONG
-            ).show()
+            if (!isFound) {
+                Toast.makeText(
+                    this,
+                    "${country.name}\ndistance: ${"%.2f".format(distance)}km",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } else {
+                Toast.makeText(
+                    this,
+                    "Bravo!!!\nVous avez trouvé ${country.name}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
 
         val suggestions = if (country == null) COUNTRIES.values.filter {
@@ -422,7 +425,7 @@ fun GreetingPreview() {
 @Composable
 fun CountryInput(
     modifier: Modifier = Modifier,
-    label: String = "Enter country name",
+    label: String = "Trouvez le pays mystère",
     onSubmit: (String) -> CountryGuessResult,
     onWin: () -> Unit,
     onValidGuess: (Country) -> Unit,
@@ -477,7 +480,7 @@ fun CountryInput(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (searchResults.isEmpty())
-                    Text("No country found")
+                    Text("Aucune correspondance trouvée")
                 else {
                     Log.d("Guess", "$searchResults")
                     searchResults.forEach { result ->
