@@ -2,7 +2,6 @@ package fr.troupel.whereami
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -237,6 +236,25 @@ class MainActivity : ComponentActivity() {
                 map.setMinZoomPreference(.5)
                 map.setMaxZoomPreference(6.0)
 
+                map.addOnMapClickListener {
+                    val screenPoint = map.projection.toScreenLocation(it)
+                    val features = map.queryRenderedFeatures(screenPoint, countriesLayerId)
+
+                    if (features.isNotEmpty()) {
+                        val feature = features[0]
+                        val id = feature.getProperty(ID_CODE).asString
+                        val distance = feature.getProperty("distance").asDouble
+                        val country = COUNTRIES[id]!!
+                        Toast.makeText(
+                            context,
+                            "${country.name}\ndistance: ${"%.0f".format(distance)}km",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return@addOnMapClickListener true
+                    }
+                    return@addOnMapClickListener false
+                }
+
                 // map.setStyle(Style.Builder().fromUri("https://raw.githubusercontent.com/wipfli/foursquare-os-places-pmtiles/refs/heads/main/style.json"))
 
                 // map.addOnCameraMoveListener {
@@ -378,7 +396,7 @@ class MainActivity : ComponentActivity() {
             if (!isFound) {
                 Toast.makeText(
                     this,
-                    "${country.name}\ndistance: ${"%.2f".format(distance)}km",
+                    "${country.name}\ndistance: ${"%.0f".format(distance)}km",
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
@@ -590,7 +608,7 @@ fun createCrossHatchBitmap(size: Int = 16): Bitmap {
         isAntiAlias = true
     }
     // draw two diagonal lines (\/ and /\)
-    canvas.drawLine(0f, size.toFloat()/2, size.toFloat(), 0f, paint)
-    canvas.drawLine(0f, size.toFloat(), size.toFloat(), size.toFloat()/2, paint)
+    canvas.drawLine(0f, size.toFloat() / 2, size.toFloat(), 0f, paint)
+    canvas.drawLine(0f, size.toFloat(), size.toFloat(), size.toFloat() / 2, paint)
     return bmp
 }
