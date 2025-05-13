@@ -1,8 +1,11 @@
 package fr.troupel.whereami
 
-//import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.filled.Search
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -90,12 +93,15 @@ private const val oceanLayerId = "ocean-layer"
 private const val disputedSourceId = "disputed-source"
 private const val disputedLayerId = "disputed-layer"
 private const val countriesSourceId = "countries-source"
-private const val shownCountriesSourceId = "shown-countries-source"
 private const val countriesLayerId = "countries-layer"
+private const val shownCountriesSourceId = "shown-countries-source"
+private const val shownDisputedSourceId = "shown-disputed-source"
+private const val concernsProperty = "concerns"
 
 class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
     private lateinit var countriesFeatures: FeatureCollection
+    private lateinit var disputedFeatures: FeatureCollection
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,16 +164,39 @@ class MainActivity : ComponentActivity() {
             )
 
         val countriesSource = GeoJsonSource(countriesSourceId, URI("asset://$countriesFilename"))
-        val json = assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
-        countriesFeatures = FeatureCollection.fromJson(json)
+        val countriesJson =
+            assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
+        countriesFeatures = FeatureCollection.fromJson(countriesJson)
         countriesFeatures.features()?.forEach {
             val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
             it.properties()?.addProperty("distance", country.distanceTo[solution] ?: -1)
-            it.properties()?.addProperty("color", "#c28cf5")
+            // it.properties()?.addProperty("color", "#c28cf5")
         }
         //countriesFeatures = countriesSource.querySourceFeatures(null)
+
+        val disputedJson =
+            assets.open(disputedFilename).bufferedReader().use(BufferedReader::readText)
+        val _props = mutableSetOf<String>()
+        disputedFeatures = FeatureCollection.fromJson(disputedJson)
+        disputedFeatures.features()?.forEach {
+            val properties = it.properties()!!
+            if (_props.isEmpty()) {
+                _props.addAll(properties.keySet().filter { key -> key.startsWith("ADM0_A3_") })
+            }
+
+            val concernedCountries = mutableSetOf<String>()
+            _props.forEach { key ->
+                val value = properties[key].asString
+                if (value != "-99") concernedCountries.add(value)
+                properties.addProperty(concernsProperty, concernedCountries.joinToString(","))
+            }
+        }
+
+
         val shownCountriesSource =
             GeoJsonSource(shownCountriesSourceId, FeatureCollection.fromFeatures(emptyArray()))
+        val shownDisputedSource =
+            GeoJsonSource(shownDisputedSourceId, FeatureCollection.fromFeatures(emptyArray()))
 
         val countriesLayer = FillLayer(countriesLayerId, shownCountriesSourceId)
             .withProperties(
@@ -190,8 +219,10 @@ class MainActivity : ComponentActivity() {
             )
 
         val disputedSource = GeoJsonSource(disputedSourceId, URI("asset://$disputedFilename"))
-        val disputedLayer = FillLayer(disputedLayerId, disputedSourceId).withProperties(
+        val disputedLayer = FillLayer(disputedLayerId, shownDisputedSourceId).withProperties(
             PropertyFactory.fillColor(DisputedArea),
+            PropertyFactory.fillPattern("crosshatch"),
+            PropertyFactory.fillOpacity(.75f),
             PropertyFactory.visibility(Property.VISIBLE)
         )
 
@@ -224,8 +255,9 @@ class MainActivity : ComponentActivity() {
                             riverSource,
                             lakeSource,
                             countriesSource,
+                            disputedSource,
                             shownCountriesSource,
-                            disputedSource
+                            shownDisputedSource,
                         )
                         .withLayers(
                             BackgroundLayer("bg").withProperties(
@@ -233,10 +265,14 @@ class MainActivity : ComponentActivity() {
                             ),
                             rasterLandLayer,
                             countriesLayer,
-                            // disputedLayer,
+                            disputedLayer,
                             oceanLayer,
                             riverLayer,
                             lakeLayer,
+                        )
+                        .withImage(
+                            "crosshatch",
+                            createCrossHatchBitmap()
                         )
                 )
 
@@ -270,10 +306,9 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-
     }
 
-    private fun draw() {
+    private fun showCountries() {
         val game = ((application as WhereAmI).game as GuessTheCountry)
 
         // show the country on the map
@@ -283,13 +318,40 @@ class MainActivity : ComponentActivity() {
                 val shownCountriesSource = requireNotNull(
                     style.getSource(shownCountriesSourceId) as GeoJsonSource
                 )
+                val shownDisputedSource = requireNotNull(
+                    style.getSource(shownDisputedSourceId) as GeoJsonSource
+                )
+
                 val shownCountries = game.guesses.toSet().map { g -> g.iso }
-                val shownFeatures = countriesFeatures.features()?.filter { feat ->
+
+                val shownCountriesFeatures = countriesFeatures.features()?.filter { feat ->
                     feat.getProperty(ID_CODE).asString in shownCountries
                 }?.toTypedArray() ?: emptyArray()
+                val shownDisputedFeatures = disputedFeatures.features()?.filter { feat ->
+                    val concerned = feat.getProperty(concernsProperty).asString
+                    shownCountries.any {
+                        it in concerned
+                    }
+                }?.toTypedArray() ?: emptyArray()
+                Log.d(
+                    "disputed",
+                    "shownDisputedFeatures: ${shownDisputedFeatures.map { it.getProperty("NAME") }}"
+                )
 
-                if (shownFeatures.isNotEmpty()) {
-                    shownCountriesSource.setGeoJson(FeatureCollection.fromFeatures(shownFeatures))
+                if (shownCountriesFeatures.isNotEmpty()) {
+                    shownCountriesSource.setGeoJson(
+                        FeatureCollection.fromFeatures(
+                            shownCountriesFeatures
+                        )
+                    )
+                }
+                if (shownDisputedFeatures.isNotEmpty()) {
+                    shownDisputedSource.setGeoJson(
+                        FeatureCollection.fromFeatures(
+                            shownDisputedFeatures
+                        )
+                    )
+
                 }
             }
         }
@@ -310,7 +372,7 @@ class MainActivity : ComponentActivity() {
         Log.d("Guess", "Was it the country to find ? $isFound")
 
         country?.let {
-            draw()
+            showCountries()
 
             val distance = game.solution.distanceTo[country]
             if (!isFound) {
@@ -362,7 +424,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         mapView.onResume()
-        draw()
+        showCountries()
     }
 
     override fun onPause() {
@@ -518,3 +580,17 @@ data class CountryGuessResult(
     val country: Country?,
     val suggestions: List<Country> = emptyList(),
 )
+
+fun createCrossHatchBitmap(size: Int = 16): Bitmap {
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val paint = Paint().apply {
+        color = Color.BLACK        // line color
+        strokeWidth = 1f            // line thickness
+        isAntiAlias = true
+    }
+    // draw two diagonal lines (\/ and /\)
+    canvas.drawLine(0f, size.toFloat()/2, size.toFloat(), 0f, paint)
+    canvas.drawLine(0f, size.toFloat(), size.toFloat(), size.toFloat()/2, paint)
+    return bmp
+}
