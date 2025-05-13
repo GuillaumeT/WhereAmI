@@ -312,7 +312,12 @@ class MainActivity : ComponentActivity() {
                     onSubmit = { guessCountry(it) },
                     onWin = {
                         Log.d("WAI", "COUNTRY FOUND!")
-                        (application as WhereAmI).game = GuessTheCountry()
+                        app.game = GuessTheCountry()
+                        countriesFeatures.features()?.forEach {
+                            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
+                            it.properties()?.addProperty("distance", country.distanceTo[(app.game as GuessTheCountry).solution] ?: -1)
+                            // it.properties()?.addProperty("color", "#c28cf5")
+                        }
                     },
                     onValidGuess = {
                         it.latLng?.let {
