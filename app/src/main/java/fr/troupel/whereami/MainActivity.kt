@@ -313,11 +313,6 @@ class MainActivity : ComponentActivity() {
                     onWin = {
                         Log.d("WAI", "COUNTRY FOUND!")
                         app.game = GuessTheCountry()
-                        countriesFeatures.features()?.forEach {
-                            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
-                            it.properties()?.addProperty("distance", country.distanceTo[(app.game as GuessTheCountry).solution] ?: -1)
-                            // it.properties()?.addProperty("color", "#c28cf5")
-                        }
                     },
                     onValidGuess = {
                         it.latLng?.let {
@@ -328,6 +323,14 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
+        }
+    }
+
+    private fun updateDistances() {
+        countriesFeatures.features()?.forEach {
+            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
+            val game = (application as WhereAmI).game as GuessTheCountry
+            it.properties()?.addProperty("distance", country.distanceTo[game.solution] ?: -1)
         }
     }
 
@@ -346,6 +349,11 @@ class MainActivity : ComponentActivity() {
                 )
 
                 val shownCountries = game.guesses.toSet().map { g -> g.iso }
+
+                if (shownCountries.size == 1) {
+                    // first guess, update the distances. This way avoids having wrong distance shown from previous game
+                    updateDistances()
+                }
 
                 val shownCountriesFeatures = countriesFeatures.features()?.filter { feat ->
                     feat.getProperty(ID_CODE).asString in shownCountries
@@ -393,6 +401,7 @@ class MainActivity : ComponentActivity() {
         // is it the country we are looking for ?
         val isFound = if (country != null) game.guess(country) else false
         Log.d("Guess", "Was it the country to find ? $isFound")
+
 
         country?.let {
             showCountries()
@@ -499,7 +508,7 @@ fun GreetingPreview() {
 @Composable
 fun CountryInput(
     modifier: Modifier = Modifier,
-    label: String = "Trouvez le pays mystère",
+    label: String = "Trouves le pays mystère",
     onSubmit: (String) -> CountryGuessResult,
     onWin: () -> Unit,
     onValidGuess: (Country) -> Unit,
