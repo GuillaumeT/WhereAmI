@@ -6,6 +6,7 @@ class Country(
     val iso: String,
     val name: String,
     val latLng: LatLng? = null,
+    val popRank: Int? = null,
     val distanceTo: HashMap<Country, Double> = HashMap()
 ) {
 

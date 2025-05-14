@@ -42,9 +42,10 @@ private fun countriesFromAssets(context: Context): HashSet<Country> {
         Country(
             it.properties.ADM0_A3,
             it.properties.NAME_FR,
-            LatLng(it.properties.LABEL_Y, it.properties.LABEL_X)
+            LatLng(it.properties.LABEL_Y, it.properties.LABEL_X),
+            it.properties.POP_RANK,
         )
-    }.filter { it.iso != "-99" }.toHashSet()
+    }.filter { it.iso != "ATA" }.toHashSet()
 }
 
 private fun setCountriesDistances(context: Context) {
@@ -58,7 +59,7 @@ private fun setCountriesDistances(context: Context) {
     distances.forEach { (isoA, distanceAtoB) ->
         val countryA = COUNTRIES[isoA]!!
         countryA.distanceTo.clear()
-        countryA.distanceTo.putAll(distanceAtoB.mapKeys {(isoB, _)  ->
+        countryA.distanceTo.putAll(distanceAtoB.mapKeys { (isoB, _) ->
             COUNTRIES[isoB]!!
         })
     }
@@ -84,4 +85,5 @@ private data class FeatureProperties(
     val ADM0_A3: String,
     val LABEL_X: Double,
     val LABEL_Y: Double,
+    val POP_RANK: Int,
 )

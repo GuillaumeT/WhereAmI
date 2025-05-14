@@ -14,20 +14,29 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -45,6 +55,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
 import fr.troupel.whereami.data.model.Country
+import fr.troupel.whereami.domain.Difficulty
 import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
@@ -167,7 +178,7 @@ class MainActivity : ComponentActivity() {
             assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(countriesJson)
         countriesFeatures.features()?.forEach {
-            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
+            val country = COUNTRIES[it.getProperty(ID_CODE).asString] ?: return@forEach
             it.properties()?.addProperty("distance", country.distanceTo[solution] ?: -1)
             // it.properties()?.addProperty("color", "#c28cf5")
         }
@@ -312,7 +323,8 @@ class MainActivity : ComponentActivity() {
                     onSubmit = { guessCountry(it) },
                     onWin = {
                         Log.d("WAI", "COUNTRY FOUND!")
-                        app.game = GuessTheCountry()
+                        val difficulty = (app.game as GuessTheCountry).difficulty
+                        app.game = GuessTheCountry(difficulty)
                     },
                     onValidGuess = {
                         it.latLng?.let {
@@ -517,6 +529,7 @@ fun CountryInput(
     val keyboardController = LocalSoftwareKeyboardController.current
     var expanded by rememberSaveable { mutableStateOf(false) }
     var searchResults by remember { mutableStateOf(listOf<Country>()) }
+    val menuExpanded = LocalMenuExpanded.current
 
     fun submit(value: String) {
         text = value // most probably already the case but not in case of suggestion selection
@@ -542,17 +555,31 @@ fun CountryInput(
             inputField = {
                 // TODO custom InputField to disable keyboard suggestions and have access to TextField(keyboardOptions)
                 //   keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrect = false),
-                SearchBarDefaults.InputField(
-                    modifier = Modifier.onFocusChanged { },
-                    query = text,
-                    onQueryChange = { newText: String -> text = newText },
-                    onSearch = ::submit,
-                    expanded = expanded,
-                    onExpandedChange = {},
-                    placeholder = { Text(label) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                )
+                Row {
+                    SearchBarDefaults.InputField(
+                        modifier = Modifier.onFocusChanged { },
+                        query = text,
+                        onQueryChange = { newText: String -> text = newText },
+                        onSearch = ::submit,
+                        expanded = expanded,
+                        onExpandedChange = {},
+                        placeholder = { Text(label) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        trailingIcon = {
+                            IconButton(
+                                onClick = {
+                                    menuExpanded.value = !menuExpanded.value
+                                }
+                            ) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            }
+
+                        }
+                    )
+                    MainDropdownMenu()
+                }
             },
+
             expanded = expanded,
             onExpandedChange = { expanded = it },
         ) {
@@ -577,6 +604,7 @@ fun CountryInput(
                 }
             }
         }
+
 
         // TextField(
         //     value = text,
@@ -605,6 +633,90 @@ fun CountryInput(
         // }
     }
 
+}
+
+val LocalMenuExpanded = compositionLocalOf { mutableStateOf(false) }
+
+@Composable
+fun MainDropdownMenu(modifier: Modifier = Modifier) {
+    val expanded = LocalMenuExpanded.current
+    val context = LocalContext.current
+    val game = (context.applicationContext as WhereAmI).game as GuessTheCountry
+
+    Box(
+        modifier = modifier
+    ) {
+        IconButton(
+            modifier = Modifier.width(0.dp),
+            onClick = { expanded.value = !expanded.value }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+        }
+        DropdownMenu(
+            expanded = expanded.value,
+            onDismissRequest = { expanded.value = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Facile") },
+                trailingIcon = {
+                    if (game.difficulty == Difficulty.EASY) {
+                        Icon(Icons.Default.Check, contentDescription = "Checked")
+                    }
+                },
+                onClick = {
+                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.EASY)
+                    expanded.value = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Moyen") },
+                trailingIcon = {
+                    if (game.difficulty == Difficulty.NORMAL) {
+                        Icon(Icons.Default.Check, contentDescription = "Checked")
+                    }
+                },
+                onClick = {
+                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.NORMAL)
+                    expanded.value = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Difficile") },
+                trailingIcon = {
+                    if (game.difficulty == Difficulty.DIFFICULT) {
+                        Icon(Icons.Default.Check, contentDescription = "Checked")
+                    }
+                },
+                onClick = {
+                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.DIFFICULT)
+                    expanded.value = false
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Impossible") },
+                trailingIcon = {
+                    if (game.difficulty == Difficulty.INSANE) {
+                        Icon(Icons.Default.Check, contentDescription = "Checked")
+                    }
+                },
+                onClick = {
+                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.INSANE)
+                    expanded.value = false
+                },
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text("Solution") },
+                onClick = {
+                    val game = (context.applicationContext as WhereAmI).game as GuessTheCountry
+                    Toast.makeText(
+                        context,
+                        "Le pays a trouvé est ${game.solution.name}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            )
+        }
+    }
 }
 
 data class CountryGuessResult(
