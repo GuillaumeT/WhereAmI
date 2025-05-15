@@ -177,11 +177,7 @@ class MainActivity : ComponentActivity() {
         val countriesJson =
             assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(countriesJson)
-        countriesFeatures.features()?.forEach {
-            val country = COUNTRIES[it.getProperty(ID_CODE).asString] ?: return@forEach
-            it.properties()?.addProperty("distance", country.distanceTo[solution] ?: -1)
-            // it.properties()?.addProperty("color", "#c28cf5")
-        }
+        updateDistances()
         //countriesFeatures = countriesSource.querySourceFeatures(null)
 
         val disputedJson =
@@ -340,7 +336,7 @@ class MainActivity : ComponentActivity() {
 
     private fun updateDistances() {
         countriesFeatures.features()?.forEach {
-            val country = COUNTRIES[it.getProperty(ID_CODE).asString]!!
+            val country = COUNTRIES[it.getProperty(ID_CODE).asString] ?: return@forEach
             val game = (application as WhereAmI).game as GuessTheCountry
             it.properties()?.addProperty("distance", country.distanceTo[game.solution] ?: -1)
         }
@@ -675,7 +671,8 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                     }
                 },
                 onClick = {
-                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.NORMAL)
+                    (context.applicationContext as WhereAmI).game =
+                        GuessTheCountry(Difficulty.NORMAL)
                     expanded.value = false
                 },
             )
@@ -687,7 +684,8 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                     }
                 },
                 onClick = {
-                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.DIFFICULT)
+                    (context.applicationContext as WhereAmI).game =
+                        GuessTheCountry(Difficulty.DIFFICULT)
                     expanded.value = false
                 },
             )
@@ -699,7 +697,8 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                     }
                 },
                 onClick = {
-                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.INSANE)
+                    (context.applicationContext as WhereAmI).game =
+                        GuessTheCountry(Difficulty.INSANE)
                     expanded.value = false
                 },
             )
