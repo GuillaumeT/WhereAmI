@@ -384,14 +384,11 @@ class MainActivity : ComponentActivity() {
                         )
                     )
                 }
-                if (shownDisputedFeatures.isNotEmpty()) {
-                    shownDisputedSource.setGeoJson(
-                        FeatureCollection.fromFeatures(
-                            shownDisputedFeatures
-                        )
+                shownDisputedSource.setGeoJson(
+                    FeatureCollection.fromFeatures(
+                        shownDisputedFeatures
                     )
-
-                }
+                )
             }
         }
     }
@@ -516,7 +513,7 @@ fun GreetingPreview() {
 @Composable
 fun CountryInput(
     modifier: Modifier = Modifier,
-    label: String = "Trouves le pays mystère",
+    label: String = "Trouve le pays mystère",
     onSubmit: (String) -> CountryGuessResult,
     onWin: () -> Unit,
     onValidGuess: (Country) -> Unit,
@@ -652,7 +649,7 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
             onDismissRequest = { expanded.value = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Facile") },
+                text = { Text("Niveau Facile") },
                 trailingIcon = {
                     if (game.difficulty == Difficulty.EASY) {
                         Icon(Icons.Default.Check, contentDescription = "Checked")
@@ -664,7 +661,7 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                 },
             )
             DropdownMenuItem(
-                text = { Text("Moyen") },
+                text = { Text("Niveau Moyen") },
                 trailingIcon = {
                     if (game.difficulty == Difficulty.NORMAL) {
                         Icon(Icons.Default.Check, contentDescription = "Checked")
@@ -677,7 +674,7 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                 },
             )
             DropdownMenuItem(
-                text = { Text("Difficile") },
+                text = { Text("Niveau Difficile") },
                 trailingIcon = {
                     if (game.difficulty == Difficulty.DIFFICULT) {
                         Icon(Icons.Default.Check, contentDescription = "Checked")
@@ -690,7 +687,7 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
                 },
             )
             DropdownMenuItem(
-                text = { Text("Impossible") },
+                text = { Text("Niveau Impossible") },
                 trailingIcon = {
                     if (game.difficulty == Difficulty.INSANE) {
                         Icon(Icons.Default.Check, contentDescription = "Checked")
@@ -704,12 +701,12 @@ fun MainDropdownMenu(modifier: Modifier = Modifier) {
             )
             HorizontalDivider()
             DropdownMenuItem(
-                text = { Text("Solution") },
+                text = { Text("Afficher la solution") },
                 onClick = {
                     val game = (context.applicationContext as WhereAmI).game as GuessTheCountry
                     Toast.makeText(
                         context,
-                        "Le pays a trouvé est ${game.solution.name}",
+                        "Le pays à deviner est \"${game.solution.name}\"",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
