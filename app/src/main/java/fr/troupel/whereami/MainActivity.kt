@@ -3,7 +3,6 @@ package fr.troupel.whereami
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
@@ -11,15 +10,21 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.shrinkOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -45,13 +50,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.ViewModel
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
 import fr.troupel.whereami.data.model.Country
@@ -112,6 +125,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var mapView: MapView
     private lateinit var countriesFeatures: FeatureCollection
     private lateinit var disputedFeatures: FeatureCollection
+    private val vm by viewModels<MainViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -310,26 +324,48 @@ class MainActivity : ComponentActivity() {
                     factory = { mapView },
                     modifier = Modifier.fillMaxSize()
                 )
-
-                CountryInput(
+                Column(
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset(y = 16.dp)
-                        .fillMaxWidth(0.9f),
-                    onSubmit = { guessCountry(it) },
-                    onWin = {
-                        Log.d("WAI", "COUNTRY FOUND!")
-                        val difficulty = (app.game as GuessTheCountry).difficulty
-                        app.game = GuessTheCountry(difficulty)
-                    },
-                    onValidGuess = {
-                        it.latLng?.let {
-                            mapView.getMapAsync { map ->
-                                map.animateCamera(CameraUpdateFactory.newLatLng(it))
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CountryInput(
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f),
+                        onSubmit = { guessCountry(it) },
+                        onWin = {
+                            Log.d("WAI", "COUNTRY FOUND!")
+                            val difficulty = (app.game as GuessTheCountry).difficulty
+                            app.game = GuessTheCountry(difficulty)
+                        },
+                        onValidGuess = {
+                            it.latLng?.let {
+                                mapView.getMapAsync { map ->
+                                    map.animateCamera(CameraUpdateFactory.newLatLng(it))
+                                }
+                            }
+                        }
+                    )
+                    AnimatedVisibility(
+                        visible = vm.isGuessNotificationShown,
+                        enter = expandIn(),
+                        exit = shrinkOut()
+                    ) {
+                        vm.guessNoficationCountryName?.let { countryName ->
+                            vm.guessNoficationCountryDistance?.let { distancce ->
+                                GuessDistanceNotification(
+                                    countryName = countryName,
+                                    distance = distancce,
+                                    modifier = Modifier
+                                        .fillMaxWidth(.75f)
+                                        .padding(16.dp)
+
+                                )
                             }
                         }
                     }
-                )
+                }
             }
         }
     }
@@ -418,6 +454,7 @@ class MainActivity : ComponentActivity() {
                     "${country.name}\ndistance: ${"%.0f".format(distance)}km",
                     Toast.LENGTH_SHORT
                 ).show()
+                vm.guessNotification(country.name, distance!!)
             } else {
                 Toast.makeText(
                     this,
@@ -434,6 +471,7 @@ class MainActivity : ComponentActivity() {
             )
             score > .85
         } else emptyList()
+
 
         return CountryGuessResult(
             isCountryGuessed = isFound,
@@ -497,6 +535,65 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
         text = "Hello $name!",
         modifier = modifier
+    )
+}
+
+@Composable
+fun GuessDistanceNotification(
+    countryName: String,
+    distance: Double,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color(0xDCFFFFFF), RoundedCornerShape(10.dp))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = "$countryName:",
+            modifier = Modifier.padding(bottom = 10.dp),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Le pays mystère est à",
+            modifier = Modifier.fillMaxWidth(),
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = "${"%.0f".format(distance)} km",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(7.dp),
+            style = TextStyle(
+                fontSize = 26.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Green,
+                textAlign = TextAlign.Center,
+                shadow = Shadow(
+                    color = Color.DarkGray,
+//                    offset = Offset(0f,2f),
+                    blurRadius = 2f
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun GuessDistanceNotificationPreview() {
+    WhereAmITheme { GuessDistanceNotification("Nigeria", 3849.23) }
+}
+
+@Composable
+fun ViewAnnotationContent(modifier: Modifier = Modifier, text: String) {
+    Text(
+        text = text,
+        modifier = modifier,
+        textAlign = TextAlign.Center,
+        fontSize = 20.sp
     )
 }
 
@@ -725,12 +822,28 @@ fun createCrossHatchBitmap(size: Int = 16): Bitmap {
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val paint = Paint().apply {
-        color = Color.BLACK        // line color
-        strokeWidth = 1f            // line thickness
+        color = Color.Black.toArgb()    // line color
+        strokeWidth = 1f                // line thickness
         isAntiAlias = true
     }
     // draw two diagonal lines (\/ and /\)
     canvas.drawLine(0f, size.toFloat() / 2, size.toFloat(), 0f, paint)
     canvas.drawLine(0f, size.toFloat(), size.toFloat(), size.toFloat() / 2, paint)
     return bmp
+}
+
+// TODO move that viewmodel elsewhere. It is here just to try it out for now.
+class MainViewModel : ViewModel() {
+    var isGuessNotificationShown by mutableStateOf(false)
+        private set
+    var guessNoficationCountryName: String? by mutableStateOf(null)
+        private set
+    var guessNoficationCountryDistance: Double? by mutableStateOf(null)
+        private set
+
+    fun guessNotification(countryName: String, distance: Double) {
+        isGuessNotificationShown = true
+        guessNoficationCountryName = countryName
+        guessNoficationCountryDistance = distance
+    }
 }
