@@ -80,7 +80,6 @@ abstract class ComputeMinDistancesTask @Inject constructor(
         println()
         print("\n".repeat(numberOfLines))
         while (true) {
-            var count = 0
             val statusLine = CountryStatusTracker.statuses.entries.sortedBy { it.key }
                 .joinToString("") { (idx, state) ->
                     val iso = features[idx].getProperty("ADM0_A3").asString
@@ -160,8 +159,8 @@ abstract class DistanceWorkAction @Inject constructor(
         val countryA = features[i]
         val idA = countryA.getProperty("ADM0_A3").asString
 
-        val total = params.totalCount.get()
-        val workLogger = Logging.getLogger(DistanceWorkAction::class.java)
+        // val total = params.totalCount.get()
+        // val workLogger = Logging.getLogger(DistanceWorkAction::class.java)
 
         // Compute distances
         val minDistances = mutableMapOf<String, Double>()
