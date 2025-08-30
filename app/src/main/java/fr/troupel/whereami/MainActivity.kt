@@ -11,9 +11,14 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandIn
-import androidx.compose.animation.shrinkOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -266,11 +271,13 @@ class MainActivity : ComponentActivity() {
                         val id = feature.getProperty(ID_CODE).asString
                         val distance = feature.getProperty("distance").asDouble
                         val country = COUNTRIES[id]!!
-                        Toast.makeText(
-                            context,
-                            "${country.name}\ndistance: ${"%.0f".format(distance)}km",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        vm.guessNotification(country.name, distance)
+                        // FixMe remove toast
+                        //Toast.makeText(
+                        //    context,
+                        //    "${country.name}\ndistance: ${"%.0f".format(distance)}km",
+                        //    Toast.LENGTH_SHORT
+                        //).show()
                         return@addOnMapClickListener true
                     }
                     return@addOnMapClickListener false
@@ -347,24 +354,79 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
+                    // Build a single nullable "notification" value
+                    val notif: Pair<String, Double>? =
+                        vm.guessNoficationCountryName?.let { name ->
+                            vm.guessNoficationCountryDistance?.let { dist -> name to dist }
+                        }
+
+                    fun transitionEnter() =
+                        slideInVertically { -it / 2 } + expandVertically(expandFrom = Alignment.Top) + fadeIn()
+
+                    fun transitionExit() = slideOutVertically { it / 2 } + fadeOut()
+                    //fun transitionEnter()  =scaleIn() + fadeIn()
+                    //fun transitionExit() = scaleOut() + fadeOut()
+
                     AnimatedVisibility(
-                        visible = vm.isGuessNotificationShown,
-                        enter = expandIn(),
-                        exit = shrinkOut()
+                        visible = vm.isGuessNotificationShown && notif != null,
+                        enter = transitionEnter(),
+                        exit = transitionExit()
                     ) {
-                        vm.guessNoficationCountryName?.let { countryName ->
-                            vm.guessNoficationCountryDistance?.let { distancce ->
+                        // Animate when either name or distance changes
+                        AnimatedContent(
+                            targetState = notif,
+                            transitionSpec = { transitionEnter() togetherWith transitionExit() },
+                            label = "guess-notification"
+                        ) { state ->
+                            state?.let { (countryName, distance) ->
                                 GuessDistanceNotification(
                                     countryName = countryName,
-                                    distance = distancce,
+                                    distance = distance,
                                     modifier = Modifier
-                                        .fillMaxWidth(.75f)
                                         .padding(16.dp)
-
+                                        .clickable(
+                                            interactionSource = null,
+                                            indication = null
+                                        ) { vm.hide() }
                                 )
                             }
                         }
                     }
+
+                    /*
+                    AnimatedVisibility(
+                        visible = vm.isGuessNotificationShown,
+                        enter = slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                        exit = slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                    ) {
+                        vm.guessNoficationCountryName?.let { countryName ->
+                            vm.guessNoficationCountryDistance?.let { distance ->
+
+                                AnimatedContent(
+                                    targetState = vm.guessNoficationCountryName,
+                                    transitionSpec = {
+                                        (slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn()) togetherWith
+                                        (slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut())
+                                    }
+                                ) { countryName ->
+                                    countryName?.let {
+                                        GuessDistanceNotification(
+                                            countryName = countryName,
+                                            distance = distance,
+                                            modifier = Modifier
+                                                .padding(16.dp)
+                                                .clickable(
+                                                    interactionSource = null,
+                                                    indication = null
+                                                ) { vm.hide() }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                     */
                 }
             }
         }
@@ -449,12 +511,13 @@ class MainActivity : ComponentActivity() {
 
             val distance = game.solution.distanceTo[country]
             if (!isFound) {
-                Toast.makeText(
-                    this,
-                    "${country.name}\ndistance: ${"%.0f".format(distance)}km",
-                    Toast.LENGTH_SHORT
-                ).show()
                 vm.guessNotification(country.name, distance!!)
+                // Fixme remove toast
+                //Toast.makeText(
+                //    this,
+                //    "${country.name}\ndistance: ${"%.0f".format(distance)}km",
+                //    Toast.LENGTH_SHORT
+                //).show()
             } else {
                 Toast.makeText(
                     this,
@@ -547,25 +610,38 @@ fun GuessDistanceNotification(
     Column(
         modifier = modifier
             .background(Color(0xDCFFFFFF), RoundedCornerShape(10.dp))
-            .padding(10.dp)
+            .padding(horizontal = 30.dp, vertical = 10.dp),
+
+        horizontalAlignment = Alignment.CenterHorizontally
+
     ) {
         Text(
-            text = "$countryName:",
-            modifier = Modifier.padding(bottom = 10.dp),
+            text = countryName,
+            modifier = Modifier
+                .padding(bottom = 15.dp)
+//                .offset(y=-2.dp)
+                .background(Color.Black, RoundedCornerShape(5.dp))
+                .padding(horizontal = 14.dp),
+            color = Color.White,
             fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
         )
+
+        val (textIntro, textDistance) = if (distance > 0) (
+                "Le pays mystère est à" to "${"%.0f".format(distance)} km"
+                ) else (
+                "Le pays mystère est" to "frontalier"
+                )
+
         Text(
-            text = "Le pays mystère est à",
-            modifier = Modifier.fillMaxWidth(),
+            text = textIntro,
             fontSize = 16.sp,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "${"%.0f".format(distance)} km",
+            text = textDistance,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(7.dp),
+                .padding(top = 4.dp),
             style = TextStyle(
                 fontSize = 26.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -574,7 +650,7 @@ fun GuessDistanceNotification(
                 shadow = Shadow(
                     color = Color.DarkGray,
 //                    offset = Offset(0f,2f),
-                    blurRadius = 2f
+                    blurRadius = 5f
                 )
             )
         )
@@ -584,7 +660,12 @@ fun GuessDistanceNotification(
 @Preview(showBackground = false)
 @Composable
 fun GuessDistanceNotificationPreview() {
-    WhereAmITheme { GuessDistanceNotification("Nigeria", 3849.23) }
+    WhereAmITheme {
+        Column {
+            GuessDistanceNotification("Nigeria", 3849.23)
+            GuessDistanceNotification("France", 0.0)
+        }
+    }
 }
 
 @Composable
@@ -842,8 +923,20 @@ class MainViewModel : ViewModel() {
         private set
 
     fun guessNotification(countryName: String, distance: Double) {
-        isGuessNotificationShown = true
         guessNoficationCountryName = countryName
         guessNoficationCountryDistance = distance
+        isGuessNotificationShown = true
+    }
+
+    fun hide() {
+        isGuessNotificationShown = false
+    }
+
+    fun show() {
+        isGuessNotificationShown = true
+    }
+
+    fun toggle() {
+        isGuessNotificationShown = !isGuessNotificationShown
     }
 }
