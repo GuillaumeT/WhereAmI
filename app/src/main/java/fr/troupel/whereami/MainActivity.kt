@@ -3,6 +3,7 @@ package fr.troupel.whereami
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color.TRANSPARENT
 import android.graphics.Paint
 import android.net.Uri
 import android.os.Bundle
@@ -248,6 +249,14 @@ class MainActivity : ComponentActivity() {
                 PropertyFactory.visibility(Property.VISIBLE),
             )
 
+        val outlineCountriesLayer =
+            FillLayer("countriesoutline", countriesSourceId).withProperties(
+                PropertyFactory.fillColor(TRANSPARENT),
+                PropertyFactory.fillOpacity(.6f),
+                PropertyFactory.fillOutlineColor("black"),
+                PropertyFactory.visibility(Property.VISIBLE),
+            )
+
         val disputedSource = GeoJsonSource(disputedSourceId, URI("asset://$disputedFilename"))
         val disputedLayer = FillLayer(disputedLayerId, shownDisputedSourceId).withProperties(
             PropertyFactory.fillColor(DisputedArea),
@@ -315,6 +324,7 @@ class MainActivity : ComponentActivity() {
                                 PropertyFactory.backgroundColor(Ocean)
                             ),
                             rasterLandLayer,
+                            outlineCountriesLayer,
                             countriesLayer,
                             disputedLayer,
                             oceanLayer,
@@ -360,9 +370,9 @@ class MainActivity : ComponentActivity() {
                         }
                     )
 
-                   if (vm.isGuessFound) {
-                       SolutionFoundCongrats(Modifier)
-                   }
+                    if (vm.isGuessFound) {
+                        SolutionFoundCongrats(Modifier)
+                    }
 
                     // Build a single nullable "notification" value
                     val notif: Pair<String, Double>? =
