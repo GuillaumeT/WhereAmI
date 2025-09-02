@@ -81,6 +81,10 @@ import fr.troupel.whereami.ui.theme.RiverAndLake
 import fr.troupel.whereami.ui.theme.WhereAmITheme
 import fr.troupel.whereami.util.jaroWinkler
 import fr.troupel.whereami.util.stripAccents
+import nl.dionsegijn.konfetti.compose.KonfettiView
+import nl.dionsegijn.konfetti.core.Party
+import nl.dionsegijn.konfetti.core.Position
+import nl.dionsegijn.konfetti.core.emitter.Emitter
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
@@ -108,6 +112,7 @@ import org.maplibre.geojson.FeatureCollection
 import java.io.BufferedReader
 import java.io.File
 import java.net.URI
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 private const val lakeSourceId = "lake-source"
@@ -354,6 +359,11 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
+
+                   if (vm.isGuessFound) {
+                       SolutionFoundCongrats(Modifier)
+                   }
+
                     // Build a single nullable "notification" value
                     val notif: Pair<String, Double>? =
                         vm.guessNoficationCountryName?.let { name ->
@@ -519,6 +529,7 @@ class MainActivity : ComponentActivity() {
                 //    Toast.LENGTH_SHORT
                 //).show()
             } else {
+                vm.isGuessFound = true
                 Toast.makeText(
                     this,
                     "Bravo!!!\nVous avez trouvé ${country.name}",
@@ -594,14 +605,6 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Composable
 fun GuessDistanceNotification(
     countryName: String,
     distance: Double,
@@ -657,6 +660,20 @@ fun GuessDistanceNotification(
     }
 }
 
+@Composable
+fun SolutionFoundCongrats(modifier: Modifier) {
+    KonfettiView(
+        modifier = Modifier.fillMaxSize(),
+        parties = listOf(
+            Party(
+                position = Position.Relative(.5, .0),
+                emitter = Emitter(duration = 5000, TimeUnit.MILLISECONDS).max(5000)
+            )
+        )
+
+    )
+}
+
 @Preview(showBackground = false)
 @Composable
 fun GuessDistanceNotificationPreview() {
@@ -676,14 +693,6 @@ fun ViewAnnotationContent(modifier: Modifier = Modifier, text: String) {
         textAlign = TextAlign.Center,
         fontSize = 20.sp
     )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    WhereAmITheme {
-        Greeting("Android")
-    }
 }
 
 
@@ -915,6 +924,7 @@ fun createCrossHatchBitmap(size: Int = 16): Bitmap {
 
 // TODO move that viewmodel elsewhere. It is here just to try it out for now.
 class MainViewModel : ViewModel() {
+    var isGuessFound by mutableStateOf(false)
     var isGuessNotificationShown by mutableStateOf(false)
         private set
     var guessNoficationCountryName: String? by mutableStateOf(null)

@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.maplibre.android.sdk)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.mapbox.sdk.turf)
+    implementation(libs.konfetti.compose)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
