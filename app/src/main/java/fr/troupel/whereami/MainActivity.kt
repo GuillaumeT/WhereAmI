@@ -22,15 +22,17 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -44,8 +46,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -55,16 +57,19 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -743,31 +748,51 @@ fun CountryInput(
                 .align(Alignment.TopCenter)
                 .semantics { traversalIndex = 0f },
             inputField = {
-                // TODO custom InputField to disable keyboard suggestions and have access to TextField(keyboardOptions)
-                //   keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrect = false),
-                Row {
-                    SearchBarDefaults.InputField(
-                        modifier = Modifier.onFocusChanged { },
-                        query = text,
-                        onQueryChange = { newText: String -> text = newText },
-                        onSearch = ::submit,
-                        expanded = expanded,
-                        onExpandedChange = {},
-                        placeholder = { Text(label) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    menuExpanded.value = !menuExpanded.value
-                                }
-                            ) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                            }
+                /*
+                 // TODO custom InputField to disable keyboard suggestions and have access to TextField(keyboardOptions)
+                 //   keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrect = false),
+                 Row {
+                     SearchBarDefaults.InputField(
+                         modifier = Modifier.onFocusChanged { },
+                         query = text,
+                         onQueryChange = { newText: String -> text = newText },
+                         onSearch = ::submit,
+                         expanded = expanded,
+                         onExpandedChange = {},
+                         keyboardOptions = KeyboardOptions.Default.copy(
+                             imeAction = ImeAction.Search
+                         ),
+                         placeholder = { Text(label) },
+                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                         trailingIcon = {
+                             IconButton(
+                                 onClick = {
+                                     menuExpanded.value = !menuExpanded.value
+                                 }
+                             ) {
+                                 Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                             }
 
-                        }
-                    )
-                    MainDropdownMenu()
-                }
+                         }
+                     )
+                     MainDropdownMenu()
+                 }
+                 */
+                TextField(
+                    value = text,
+                    onValueChange = { searchText: String -> text = searchText },
+                    label = { Text(label) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Search,
+                        keyboardType = KeyboardType.Password,
+                        showKeyboardOnFocus = false,
+                    ),
+                    keyboardActions = KeyboardActions(onSearch = { submit(text) }),
+                    shape = RoundedCornerShape(15.dp, 15.dp),
+                )
             },
 
             expanded = expanded,
