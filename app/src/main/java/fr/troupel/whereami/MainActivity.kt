@@ -22,13 +22,13 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -60,9 +60,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
@@ -346,11 +344,12 @@ class MainActivity : ComponentActivity() {
         }
         //setContentView(mapView)
         setContent {
+            AndroidView(
+                factory = { mapView },
+                modifier = Modifier.fillMaxSize()
+            )
+
             Box(modifier = Modifier.fillMaxSize()) {
-                AndroidView(
-                    factory = { mapView },
-                    modifier = Modifier.fillMaxSize()
-                )
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -374,67 +373,45 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
-
-                    if (vm.isGuessFound) {
-                        SolutionFoundCongrats(Modifier)
-                    }
-
-                    // Build a single nullable "notification" value
-                    val notif: Pair<String, Double>? =
-                        vm.guessNoficationCountryName?.let { name ->
-                            vm.guessNoficationCountryDistance?.let { dist -> name to dist }
-                        }
-
-                    fun transitionEnter() =
-                        slideInVertically { -it / 2 } + expandVertically(expandFrom = Alignment.Top) + fadeIn()
-
-                    fun transitionExit() = slideOutVertically { it / 2 } + fadeOut()
-                    //fun transitionEnter()  =scaleIn() + fadeIn()
-                    //fun transitionExit() = scaleOut() + fadeOut()
-
-                    AnimatedVisibility(
-                        visible = vm.isGuessNotificationShown && notif != null,
-                        enter = transitionEnter(),
-                        exit = transitionExit()
-                    ) {
-                        // Animate when either name or distance changes
-                        AnimatedContent(
-                            targetState = notif,
-                            transitionSpec = { transitionEnter() togetherWith transitionExit() },
-                            label = "guess-notification"
-                        ) { state ->
-                            state?.let { (countryName, distance) ->
-                                GuessDistanceNotification(
-                                    countryName = countryName,
-                                    distance = distance,
-                                    modifier = Modifier
-                                        .padding(16.dp)
-                                        .clickable(
-                                            interactionSource = null,
-                                            indication = null
-                                        ) { vm.hide() }
-                                )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (vm.isGuessFound) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                            ) {
+                                SolutionFoundCongrats(Modifier)
                             }
                         }
-                    }
 
-                    /*
-                    AnimatedVisibility(
-                        visible = vm.isGuessNotificationShown,
-                        enter = slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                        exit = slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                    ) {
-                        vm.guessNoficationCountryName?.let { countryName ->
-                            vm.guessNoficationCountryDistance?.let { distance ->
+                        // Build a single nullable "notification" value
+                        val notif: Pair<String, Double>? =
+                            vm.guessNoficationCountryName?.let { name ->
+                                vm.guessNoficationCountryDistance?.let { dist -> name to dist }
+                            }
 
-                                AnimatedContent(
-                                    targetState = vm.guessNoficationCountryName,
-                                    transitionSpec = {
-                                        (slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn()) togetherWith
-                                        (slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut())
-                                    }
-                                ) { countryName ->
-                                    countryName?.let {
+                        fun transitionEnter() =
+                            slideInVertically { -it / 2 } + expandVertically(expandFrom = Alignment.Top) + fadeIn()
+
+                        fun transitionExit() = slideOutVertically { it / 2 } + fadeOut()
+                        //fun transitionEnter()  =scaleIn() + fadeIn()
+                        //fun transitionExit() = scaleOut() + fadeOut()
+
+                        this@Column.AnimatedVisibility(
+                            visible = vm.isGuessNotificationShown && notif != null,
+                            enter = transitionEnter(),
+                            exit = transitionExit(),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                        ) {
+                            // Animate when either name or distance changes
+                            AnimatedContent(
+                                targetState = notif,
+                                transitionSpec = { transitionEnter() togetherWith transitionExit() },
+                                label = "guess-notification"
+                            ) { state ->
+                                state?.let { (countryName, distance) ->
+                                    Box() {
                                         GuessDistanceNotification(
                                             countryName = countryName,
                                             distance = distance,
@@ -449,10 +426,44 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                    }
 
-                     */
+                    }
                 }
+
+                /*
+                AnimatedVisibility(
+                    visible = vm.isGuessNotificationShown,
+                    enter = slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                    exit = slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                ) {
+                    vm.guessNoficationCountryName?.let { countryName ->
+                        vm.guessNoficationCountryDistance?.let { distance ->
+
+                            AnimatedContent(
+                                targetState = vm.guessNoficationCountryName,
+                                transitionSpec = {
+                                    (slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn()) togetherWith
+                                    (slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut())
+                                }
+                            ) { countryName ->
+                                countryName?.let {
+                                    GuessDistanceNotification(
+                                        countryName = countryName,
+                                        distance = distance,
+                                        modifier = Modifier
+                                            .padding(16.dp)
+                                            .clickable(
+                                                interactionSource = null,
+                                                indication = null
+                                            ) { vm.hide() }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                 */
             }
         }
     }
