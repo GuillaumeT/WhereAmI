@@ -15,3 +15,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+app/release/
+assetpack_waipack/build/
