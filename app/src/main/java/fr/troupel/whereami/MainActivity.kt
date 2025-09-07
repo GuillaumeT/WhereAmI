@@ -74,6 +74,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
+import com.google.android.play.core.assetpacks.AssetPackManager
+import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
 import fr.troupel.whereami.data.model.Country

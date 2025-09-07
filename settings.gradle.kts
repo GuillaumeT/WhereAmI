@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Where Am I"
 include(":app")
+include(":assetpack_waipack")

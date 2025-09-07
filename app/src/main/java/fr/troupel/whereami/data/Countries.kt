@@ -1,12 +1,15 @@
 package fr.troupel.whereami.data
 
 import android.content.Context
+import com.google.android.play.core.assetpacks.AssetPackManager
+import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import fr.troupel.whereami.data.model.Country
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.maplibre.android.geometry.LatLng
+import java.io.File
 import java.util.Locale
 
 const val ID_CODE = "ADM0_A3"
