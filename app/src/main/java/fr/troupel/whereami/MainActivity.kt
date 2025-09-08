@@ -27,49 +27,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -79,18 +47,16 @@ import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
 import fr.troupel.whereami.data.model.Country
+import fr.troupel.whereami.ui.guesscountry.components.CountryInput
+import fr.troupel.whereami.ui.guesscountry.components.GuessDistanceNotification
+import fr.troupel.whereami.ui.guesscountry.components.SolutionFoundCongrats
 import fr.troupel.whereami.domain.Difficulty
 import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
 import fr.troupel.whereami.ui.theme.RiverAndLake
-import fr.troupel.whereami.ui.theme.WhereAmITheme
 import fr.troupel.whereami.util.jaroWinkler
 import fr.troupel.whereami.util.stripAccents
-import nl.dionsegijn.konfetti.compose.KonfettiView
-import nl.dionsegijn.konfetti.core.Party
-import nl.dionsegijn.konfetti.core.Position
-import nl.dionsegijn.konfetti.core.emitter.Emitter
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
@@ -118,7 +84,6 @@ import org.maplibre.geojson.FeatureCollection
 import java.io.BufferedReader
 import java.io.File
 import java.net.URI
-import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 private const val lakeSourceId = "lake-source"
@@ -633,87 +598,6 @@ class MainActivity : ComponentActivity() {
 
 
 @Composable
-fun GuessDistanceNotification(
-    countryName: String,
-    distance: Double,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .background(Color(0xDCFFFFFF), RoundedCornerShape(10.dp))
-            .padding(horizontal = 30.dp, vertical = 10.dp),
-
-        horizontalAlignment = Alignment.CenterHorizontally
-
-    ) {
-        Text(
-            text = countryName,
-            modifier = Modifier
-                .padding(bottom = 15.dp)
-//                .offset(y=-2.dp)
-                .background(Color.Black, RoundedCornerShape(5.dp))
-                .padding(horizontal = 14.dp),
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-        )
-
-        val (textIntro, textDistance) = if (distance > 0) (
-                "Le pays mystère est à" to "${"%.0f".format(distance)} km"
-                ) else (
-                "Le pays mystère est" to "frontalier"
-                )
-
-        Text(
-            text = textIntro,
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            text = textDistance,
-            modifier = Modifier
-                .padding(top = 4.dp),
-            style = TextStyle(
-                fontSize = 26.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.Green,
-                textAlign = TextAlign.Center,
-                shadow = Shadow(
-                    color = Color.DarkGray,
-//                    offset = Offset(0f,2f),
-                    blurRadius = 5f
-                )
-            )
-        )
-    }
-}
-
-@Composable
-fun SolutionFoundCongrats(modifier: Modifier) {
-    KonfettiView(
-        modifier = Modifier.fillMaxSize(),
-        parties = listOf(
-            Party(
-                position = Position.Relative(.5, .0),
-                emitter = Emitter(duration = 5000, TimeUnit.MILLISECONDS).max(5000)
-            )
-        )
-
-    )
-}
-
-@Preview(showBackground = false)
-@Composable
-fun GuessDistanceNotificationPreview() {
-    WhereAmITheme {
-        Column {
-            GuessDistanceNotification("Nigeria", 3849.23)
-            GuessDistanceNotification("France", 0.0)
-        }
-    }
-}
-
-@Composable
 fun ViewAnnotationContent(modifier: Modifier = Modifier, text: String) {
     Text(
         text = text,
@@ -724,231 +608,6 @@ fun ViewAnnotationContent(modifier: Modifier = Modifier, text: String) {
 }
 
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CountryInput(
-    modifier: Modifier = Modifier,
-    label: String = "Trouve le pays mystère",
-    onSubmit: (String) -> CountryGuessResult,
-    onWin: () -> Unit,
-    onValidGuess: (Country) -> Unit,
-) {
-    var text by remember { mutableStateOf("") }
-    val keyboardController = LocalSoftwareKeyboardController.current
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    var searchResults by remember { mutableStateOf(listOf<Country>()) }
-    val menuExpanded = LocalMenuExpanded.current
-
-    fun submit(value: String) {
-        text = value // most probably already the case but not in case of suggestion selection
-        val result = onSubmit(text)
-        if (result.isCountryGuessed) {
-            onWin()
-        }
-        if (result.country != null) {
-            text = ""
-            expanded = false
-            onValidGuess(result.country)
-        } else {
-            expanded = true
-            searchResults = result.suggestions
-        }
-    }
-
-    Box(modifier = modifier) {
-        SearchBar(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .semantics { traversalIndex = 0f },
-            inputField = {
-                /*
-                 // TODO custom InputField to disable keyboard suggestions and have access to TextField(keyboardOptions)
-                 //   keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrect = false),
-                 Row {
-                     SearchBarDefaults.InputField(
-                         modifier = Modifier.onFocusChanged { },
-                         query = text,
-                         onQueryChange = { newText: String -> text = newText },
-                         onSearch = ::submit,
-                         expanded = expanded,
-                         onExpandedChange = {},
-                         keyboardOptions = KeyboardOptions.Default.copy(
-                             imeAction = ImeAction.Search
-                         ),
-                         placeholder = { Text(label) },
-                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                         trailingIcon = {
-                             IconButton(
-                                 onClick = {
-                                     menuExpanded.value = !menuExpanded.value
-                                 }
-                             ) {
-                                 Icon(Icons.Default.MoreVert, contentDescription = "More options")
-                             }
-
-                         }
-                     )
-                     MainDropdownMenu()
-                 }
-                 */
-                TextField(
-                    value = text,
-                    onValueChange = { searchText: String -> text = searchText },
-                    label = { Text(label) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        autoCorrectEnabled = false,
-                        imeAction = ImeAction.Search,
-                        keyboardType = KeyboardType.Password,
-                        showKeyboardOnFocus = false,
-                    ),
-                    keyboardActions = KeyboardActions(onSearch = { submit(text) }),
-                    shape = RoundedCornerShape(15.dp, 15.dp),
-                )
-            },
-
-            expanded = expanded,
-            onExpandedChange = { expanded = it },
-        ) {
-            // Display search results in a scrollable column
-            Column(
-                Modifier
-//                    .heightIn(max = 250.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                if (searchResults.isEmpty())
-                    Text("Aucune correspondance trouvée")
-                else {
-                    Log.d("Guess", "$searchResults")
-                    searchResults.forEach { result ->
-                        ListItem(
-                            headlineContent = { Text(result.name) },
-                            modifier = Modifier
-                                .clickable { submit(result.name) }
-                                .fillMaxWidth()
-                        )
-                    }
-                }
-            }
-        }
-
-
-        // TextField(
-        //     value = text,
-        //     singleLine = true,
-        //     onValueChange = { newText: String -> text = newText },
-        //     placeholder = { Text("Type a country") },
-        //     keyboardOptions = KeyboardOptions.Default.copy(
-        //         imeAction = ImeAction.Done
-        //     ),
-        //     keyboardActions = KeyboardActions(onDone = {
-        //         submit(text)
-        //         keyboardController?.hide()
-        //     }),
-        //     modifier = Modifier
-        //         .fillMaxWidth()
-        //         .padding(16.dp)
-        // )
-
-        // Button(
-        //     onClick = { submit(text) },
-        //     modifier = Modifier
-        //         .align(Alignment.CenterEnd)
-        //         .offset(x = (-32).dp)
-        // ) {
-        //     Text("Guess")
-        // }
-    }
-
-}
-
-val LocalMenuExpanded = compositionLocalOf { mutableStateOf(false) }
-
-@Composable
-fun MainDropdownMenu(modifier: Modifier = Modifier) {
-    val expanded = LocalMenuExpanded.current
-    val context = LocalContext.current
-    val game = (context.applicationContext as WhereAmI).game as GuessTheCountry
-
-    Box(
-        modifier = modifier
-    ) {
-        IconButton(
-            modifier = Modifier.width(0.dp),
-            onClick = { expanded.value = !expanded.value }) {
-            Icon(Icons.Default.MoreVert, contentDescription = "More options")
-        }
-        DropdownMenu(
-            expanded = expanded.value,
-            onDismissRequest = { expanded.value = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Niveau Facile") },
-                trailingIcon = {
-                    if (game.difficulty == Difficulty.EASY) {
-                        Icon(Icons.Default.Check, contentDescription = "Checked")
-                    }
-                },
-                onClick = {
-                    (context.applicationContext as WhereAmI).game = GuessTheCountry(Difficulty.EASY)
-                    expanded.value = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Niveau Moyen") },
-                trailingIcon = {
-                    if (game.difficulty == Difficulty.NORMAL) {
-                        Icon(Icons.Default.Check, contentDescription = "Checked")
-                    }
-                },
-                onClick = {
-                    (context.applicationContext as WhereAmI).game =
-                        GuessTheCountry(Difficulty.NORMAL)
-                    expanded.value = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Niveau Difficile") },
-                trailingIcon = {
-                    if (game.difficulty == Difficulty.DIFFICULT) {
-                        Icon(Icons.Default.Check, contentDescription = "Checked")
-                    }
-                },
-                onClick = {
-                    (context.applicationContext as WhereAmI).game =
-                        GuessTheCountry(Difficulty.DIFFICULT)
-                    expanded.value = false
-                },
-            )
-            DropdownMenuItem(
-                text = { Text("Niveau Impossible") },
-                trailingIcon = {
-                    if (game.difficulty == Difficulty.INSANE) {
-                        Icon(Icons.Default.Check, contentDescription = "Checked")
-                    }
-                },
-                onClick = {
-                    (context.applicationContext as WhereAmI).game =
-                        GuessTheCountry(Difficulty.INSANE)
-                    expanded.value = false
-                },
-            )
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text("Afficher la solution") },
-                onClick = {
-                    val game = (context.applicationContext as WhereAmI).game as GuessTheCountry
-                    Toast.makeText(
-                        context,
-                        "Le pays à deviner est \"${game.solution.name}\"",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            )
-        }
-    }
-}
 
 data class CountryGuessResult(
     val isCountryGuessed: Boolean,
