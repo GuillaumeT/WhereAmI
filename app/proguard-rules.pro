@@ -14,8 +14,18 @@
 
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+-keepattributes Signature, SourceFile, LineNumberTable, *Annotation*
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# -- Keep Gson internals
+-keep class com.google.gson.** { *; }
+-dontwarn com.google.gson.**
+
+-keep class fr.troupel.whereami.** { *; }
+#-keepclassmembers fr.troupel.whereami.** {
+#    <fields>;
+#    <init>(...);
+#}
