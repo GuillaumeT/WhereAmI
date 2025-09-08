@@ -13,16 +13,16 @@ android {
         applicationId = "fr.troupel.whereami"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.0.1-alpha"
+        versionCode = 2
+        versionName = "0.0.1-alpha.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
