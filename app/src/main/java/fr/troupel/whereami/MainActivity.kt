@@ -20,7 +20,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,21 +41,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
-import com.google.android.play.core.assetpacks.AssetPackManager
-import com.google.android.play.core.assetpacks.AssetPackManagerFactory
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
-import fr.troupel.whereami.data.model.Country
+import fr.troupel.whereami.ui.CountryGuessResult
+import fr.troupel.whereami.ui.GuessViewModel
 import fr.troupel.whereami.ui.guesscountry.components.CountryInput
 import fr.troupel.whereami.ui.guesscountry.components.GuessDistanceNotification
 import fr.troupel.whereami.ui.guesscountry.components.SolutionFoundCongrats
-import fr.troupel.whereami.domain.Difficulty
-import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
 import fr.troupel.whereami.ui.theme.RiverAndLake
-import fr.troupel.whereami.util.jaroWinkler
-import fr.troupel.whereami.util.stripAccents
 import org.maplibre.android.MapLibre
 import org.maplibre.android.WellKnownTileServer
 import org.maplibre.android.camera.CameraPosition
@@ -103,6 +97,7 @@ private const val shownDisputedSourceId = "shown-disputed-source"
 private const val concernsProperty = "concerns"
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: GuessViewModel by viewModels()
     private lateinit var mapView: MapView
     private lateinit var countriesFeatures: FeatureCollection
     private lateinit var disputedFeatures: FeatureCollection
@@ -111,8 +106,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val app = application as WhereAmI
-        val solution = (app.game as GuessTheCountry).solution
+        val solution = viewModel.solution
         Log.d("WAI", "Game: $solution")
 
         val landFilename = "HYP_HR_SR.pmtiles"
@@ -172,7 +166,7 @@ class MainActivity : ComponentActivity() {
         val countriesJson =
             assets.open(countriesFilename).bufferedReader().use(BufferedReader::readText)
         countriesFeatures = FeatureCollection.fromJson(countriesJson)
-        updateDistances()
+        viewModel.updateDistances(countriesFeatures)
         //countriesFeatures = countriesSource.querySourceFeatures(null)
 
         val disputedJson =
@@ -329,8 +323,9 @@ class MainActivity : ComponentActivity() {
                         onSubmit = { guessCountry(it) },
                         onWin = {
                             Log.d("WAI", "COUNTRY FOUND!")
-                            val difficulty = (app.game as GuessTheCountry).difficulty
-                            app.game = GuessTheCountry(difficulty)
+                            // TODO do we really need to retrieve the difficulty. Can't we have it directly from previous game ?
+                            val difficulty = viewModel.difficulty
+                            viewModel.newGame(difficulty)
                         },
                         onValidGuess = {
                             it.latLng?.let {
@@ -435,17 +430,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun updateDistances() {
-        countriesFeatures.features()?.forEach {
-            val country = COUNTRIES[it.getProperty(ID_CODE).asString] ?: return@forEach
-            val game = (application as WhereAmI).game as GuessTheCountry
-            it.properties()?.addProperty("distance", country.distanceTo[game.solution] ?: -1)
-        }
-    }
-
     private fun showCountries() {
-        val game = ((application as WhereAmI).game as GuessTheCountry)
-
         // show the country on the map
         mapView.getMapAsync { map ->
             map.getStyle { style ->
@@ -457,11 +442,11 @@ class MainActivity : ComponentActivity() {
                     style.getSource(shownDisputedSourceId) as GeoJsonSource
                 )
 
-                val shownCountries = game.guesses.toSet().map { g -> g.iso }
+                val shownCountries = viewModel.guesses.value?.toSet()?.map { it.iso } ?: emptyList()
 
                 if (shownCountries.size == 1) {
                     // first guess, update the distances. This way avoids having wrong distance shown from previous game
-                    updateDistances()
+                    viewModel.updateDistances(countriesFeatures)
                 }
 
                 val shownCountriesFeatures = countriesFeatures.features()?.filter { feat ->
@@ -495,25 +480,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun guessCountry(countryName: String): CountryGuessResult {
-        Log.d("Guess", "Guess is \"$countryName\"")
-        val country = COUNTRIES.values.find {
-            it.name.trim().stripAccents().lowercase() == countryName.trim().stripAccents()
-                .lowercase()
-                .trim()
-        }
-        val game = ((application as WhereAmI).game as GuessTheCountry)
-
-        Log.d("Guess", "is it a valid country: $country")
-        // is it the country we are looking for ?
-        val isFound = if (country != null) game.guess(country) else false
-        Log.d("Guess", "Was it the country to find ? $isFound")
-
-
-        country?.let {
+        val result = viewModel.guessCountry(countryName)
+        result.country?.let { country ->
             showCountries()
 
-            val distance = game.solution.distanceTo[country]
-            if (!isFound) {
+            val distance = viewModel.solution.distanceTo[country]
+            if (!result.isCountryGuessed) {
                 vm.guessNotification(country.name, distance!!)
                 // Fixme remove toast
                 //Toast.makeText(
@@ -530,21 +502,7 @@ class MainActivity : ComponentActivity() {
                 ).show()
             }
         }
-
-        val suggestions = if (country == null) COUNTRIES.values.filter {
-            val score = jaroWinkler(
-                countryName.trim().stripAccents().lowercase(),
-                it.name.trim().stripAccents().lowercase()
-            )
-            score > .85
-        } else emptyList()
-
-
-        return CountryGuessResult(
-            isCountryGuessed = isFound,
-            country = country,
-            suggestions = suggestions
-        )
+        return result
     }
 
     private fun copyAssetsIfNeeded(context: Context, assetName: String) {
@@ -607,13 +565,6 @@ fun ViewAnnotationContent(modifier: Modifier = Modifier, text: String) {
     )
 }
 
-
-
-data class CountryGuessResult(
-    val isCountryGuessed: Boolean,
-    val country: Country?,
-    val suggestions: List<Country> = emptyList(),
-)
 
 fun createCrossHatchBitmap(size: Int = 16): Bitmap {
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)

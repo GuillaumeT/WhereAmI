@@ -30,9 +30,9 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import fr.troupel.whereami.CountryGuessResult
 import fr.troupel.whereami.data.model.Country
 import androidx.compose.material3.Icon
+import fr.troupel.whereami.ui.CountryGuessResult
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
