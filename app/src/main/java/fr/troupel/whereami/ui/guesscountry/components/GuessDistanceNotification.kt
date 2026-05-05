@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +26,8 @@ import nl.dionsegijn.konfetti.core.emitter.Emitter
 import java.util.concurrent.TimeUnit
 import androidx.compose.ui.tooling.preview.Preview
 import fr.troupel.whereami.ui.theme.WhereAmITheme
+import nl.dionsegijn.konfetti.compose.OnParticleSystemUpdateListener
+import nl.dionsegijn.konfetti.core.PartySystem
 
 @Composable
 fun GuessDistanceNotification(
@@ -48,10 +53,10 @@ fun GuessDistanceNotification(
         )
 
         val (textIntro, textDistance) = if (distance > 0) (
-            "Le pays mystère est à" to "${"%.0f".format(distance)} km"
-        ) else (
-            "Le pays mystère est" to "frontalier"
-        )
+                "Le pays mystère est à" to "${"%.0f".format(distance)} km"
+                ) else (
+                "Le pays mystère est" to "frontalier"
+                )
 
         Text(
             text = textIntro,

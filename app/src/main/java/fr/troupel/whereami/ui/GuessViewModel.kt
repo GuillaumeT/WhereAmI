@@ -1,5 +1,6 @@
 package fr.troupel.whereami.ui
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -10,6 +11,8 @@ import fr.troupel.whereami.domain.Difficulty
 import fr.troupel.whereami.domain.GuessTheCountry
 import fr.troupel.whereami.util.jaroWinkler
 import fr.troupel.whereami.util.stripAccents
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import org.maplibre.geojson.FeatureCollection
 
 /**
@@ -18,7 +21,11 @@ import org.maplibre.geojson.FeatureCollection
 class GuessViewModel : ViewModel() {
     private var game: GuessTheCountry = GuessTheCountry()
 
+    val _confetti = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 1)
+    val confetti = _confetti.asSharedFlow()
+
     private val _guesses = MutableLiveData(game.guesses)
+
     /** Exposes the list of guessed countries. */
     val guesses: LiveData<List<Country>> = _guesses
 
@@ -34,6 +41,7 @@ class GuessViewModel : ViewModel() {
     fun newGame(difficulty: Difficulty = game.difficulty) {
         game = GuessTheCountry(difficulty)
         _guesses.value = game.guesses
+        Log.d("WAI", "Game: ${game.solution}")
     }
 
     /**
@@ -48,6 +56,7 @@ class GuessViewModel : ViewModel() {
         }
 
         val isFound = if (country != null) game.guess(country) else false
+        if (isFound) launchKonfetties()
 
         country?.let {
             // update guesses list whenever a country is guessed
@@ -77,6 +86,10 @@ class GuessViewModel : ViewModel() {
             val country = COUNTRIES[feature.getProperty(ID_CODE).asString] ?: return@forEach
             feature.properties()?.addProperty("distance", country.distanceTo[game.solution] ?: -1)
         }
+    }
+
+    fun launchKonfetties() {
+        _confetti.tryEmit(Unit)
     }
 }
 

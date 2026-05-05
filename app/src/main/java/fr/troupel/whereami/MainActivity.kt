@@ -27,8 +27,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -43,11 +45,14 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
 import fr.troupel.whereami.data.COUNTRIES
 import fr.troupel.whereami.data.ID_CODE
+import fr.troupel.whereami.navigation.AppNavigator
 import fr.troupel.whereami.ui.CountryGuessResult
 import fr.troupel.whereami.ui.GuessViewModel
 import fr.troupel.whereami.ui.guesscountry.components.CountryInput
 import fr.troupel.whereami.ui.guesscountry.components.GuessDistanceNotification
+import fr.troupel.whereami.ui.guesscountry.components.KonfettiHost
 import fr.troupel.whereami.ui.guesscountry.components.SolutionFoundCongrats
+import fr.troupel.whereami.ui.guesscountry.components.rememberKonfettiController
 import fr.troupel.whereami.ui.theme.DisputedArea
 import fr.troupel.whereami.ui.theme.Ocean
 import fr.troupel.whereami.ui.theme.RiverAndLake
@@ -235,6 +240,8 @@ class MainActivity : ComponentActivity() {
             logoEnabled(false)
             attributionEnabled(false)
         }
+
+
         mapView = MapView(this, mapOptions).apply {
             getMapAsync { map ->
                 map.setMinZoomPreference(.5)
@@ -288,12 +295,12 @@ class MainActivity : ComponentActivity() {
                                 PropertyFactory.backgroundColor(Ocean)
                             ),
                             rasterLandLayer,
-                            outlineCountriesLayer,
                             countriesLayer,
                             disputedLayer,
                             oceanLayer,
                             riverLayer,
                             lakeLayer,
+                            outlineCountriesLayer,
                         )
                         .withImage(
                             "crosshatch",
@@ -303,77 +310,127 @@ class MainActivity : ComponentActivity() {
 
             }
         }
+        val showMenu = true
         //setContentView(mapView)
         setContent {
-            AndroidView(
-                factory = { mapView },
-                modifier = Modifier.fillMaxSize()
-            )
+            if (showMenu) {
+                AppNavigator()
+            } else {
+                val konfetti = rememberKonfettiController()
+                LaunchedEffect(Unit) {
+                    viewModel.confetti.collect { konfetti.launch() }
+                }
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    CountryInput(
+                AndroidView(
+                    factory = { mapView },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth(0.9f),
-                        onSubmit = { guessCountry(it) },
-                        onWin = {
-                            Log.d("WAI", "COUNTRY FOUND!")
-                            // TODO do we really need to retrieve the difficulty. Can't we have it directly from previous game ?
-                            val difficulty = viewModel.difficulty
-                            viewModel.newGame(difficulty)
-                        },
-                        onValidGuess = {
-                            it.latLng?.let {
-                                mapView.getMapAsync { map ->
-                                    map.animateCamera(CameraUpdateFactory.newLatLng(it))
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CountryInput(
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f),
+                            onSubmit = { guessCountry(it) },
+                            onWin = {
+                                Log.d("WAI", "COUNTRY FOUND!")
+                                // TODO do we really need to retrieve the difficulty. Can't we have it directly from previous game ?
+                                val difficulty = viewModel.difficulty
+                                viewModel.newGame(difficulty)
+                            },
+                            onValidGuess = {
+                                it.latLng?.let {
+                                    mapView.getMapAsync { map ->
+                                        map.animateCamera(CameraUpdateFactory.newLatLng(it))
+                                    }
                                 }
                             }
-                        }
-                    )
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (vm.isGuessFound) {
-                            Box(
+                        )
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Button(onClick = {
+                                viewModel._confetti.tryEmit(Unit)
+                            }) {
+                                Text("TADAAA")
+                            }
+                            KonfettiHost(konfetti, modifier = Modifier.fillMaxSize())
+                            if (vm.isGuessFound and false) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                ) {
+                                    SolutionFoundCongrats(Modifier)
+                                }
+                            }
+
+                            // Build a single nullable "notification" value
+                            val notif: Pair<String, Double>? =
+                                vm.guessNoficationCountryName?.let { name ->
+                                    vm.guessNoficationCountryDistance?.let { dist -> name to dist }
+                                }
+
+                            fun transitionEnter() =
+                                slideInVertically { -it / 2 } + expandVertically(expandFrom = Alignment.Top) + fadeIn()
+
+                            fun transitionExit() = slideOutVertically { it / 2 } + fadeOut()
+                            //fun transitionEnter()  =scaleIn() + fadeIn()
+                            //fun transitionExit() = scaleOut() + fadeOut()
+
+                            this@Column.AnimatedVisibility(
+                                visible = vm.isGuessNotificationShown && notif != null,
+                                enter = transitionEnter(),
+                                exit = transitionExit(),
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .wrapContentWidth(Alignment.CenterHorizontally)
                             ) {
-                                SolutionFoundCongrats(Modifier)
+                                // Animate when either name or distance changes
+                                AnimatedContent(
+                                    targetState = notif,
+                                    transitionSpec = { transitionEnter() togetherWith transitionExit() },
+                                    label = "guess-notification"
+                                ) { state ->
+                                    state?.let { (countryName, distance) ->
+                                        Box() {
+                                            GuessDistanceNotification(
+                                                countryName = countryName,
+                                                distance = distance,
+                                                modifier = Modifier
+                                                    .padding(16.dp)
+                                                    .clickable(
+                                                        interactionSource = null,
+                                                        indication = null
+                                                    ) { vm.hide() }
+                                            )
+                                        }
+                                    }
+                                }
                             }
+
                         }
+                    }
 
-                        // Build a single nullable "notification" value
-                        val notif: Pair<String, Double>? =
-                            vm.guessNoficationCountryName?.let { name ->
-                                vm.guessNoficationCountryDistance?.let { dist -> name to dist }
-                            }
+                    /*
+                    AnimatedVisibility(
+                        visible = vm.isGuessNotificationShown,
+                        enter = slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn(),
+                        exit = slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                    ) {
+                        vm.guessNoficationCountryName?.let { countryName ->
+                            vm.guessNoficationCountryDistance?.let { distance ->
 
-                        fun transitionEnter() =
-                            slideInVertically { -it / 2 } + expandVertically(expandFrom = Alignment.Top) + fadeIn()
-
-                        fun transitionExit() = slideOutVertically { it / 2 } + fadeOut()
-                        //fun transitionEnter()  =scaleIn() + fadeIn()
-                        //fun transitionExit() = scaleOut() + fadeOut()
-
-                        this@Column.AnimatedVisibility(
-                            visible = vm.isGuessNotificationShown && notif != null,
-                            enter = transitionEnter(),
-                            exit = transitionExit(),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .wrapContentWidth(Alignment.CenterHorizontally)
-                        ) {
-                            // Animate when either name or distance changes
-                            AnimatedContent(
-                                targetState = notif,
-                                transitionSpec = { transitionEnter() togetherWith transitionExit() },
-                                label = "guess-notification"
-                            ) { state ->
-                                state?.let { (countryName, distance) ->
-                                    Box() {
+                                AnimatedContent(
+                                    targetState = vm.guessNoficationCountryName,
+                                    transitionSpec = {
+                                        (slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn()) togetherWith
+                                        (slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut())
+                                    }
+                                ) { countryName ->
+                                    countryName?.let {
                                         GuessDistanceNotification(
                                             countryName = countryName,
                                             distance = distance,
@@ -388,44 +445,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-
                     }
+
+                     */
                 }
-
-                /*
-                AnimatedVisibility(
-                    visible = vm.isGuessNotificationShown,
-                    enter = slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                    exit = slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
-                ) {
-                    vm.guessNoficationCountryName?.let { countryName ->
-                        vm.guessNoficationCountryDistance?.let { distance ->
-
-                            AnimatedContent(
-                                targetState = vm.guessNoficationCountryName,
-                                transitionSpec = {
-                                    (slideInVertically() + expandVertically(expandFrom = Alignment.Top) + fadeIn()) togetherWith
-                                    (slideOutVertically() + shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut())
-                                }
-                            ) { countryName ->
-                                countryName?.let {
-                                    GuessDistanceNotification(
-                                        countryName = countryName,
-                                        distance = distance,
-                                        modifier = Modifier
-                                            .padding(16.dp)
-                                            .clickable(
-                                                interactionSource = null,
-                                                indication = null
-                                            ) { vm.hide() }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                 */
             }
         }
     }
