@@ -1,7 +1,8 @@
 [versions]
 agp = "8.8.2"
-kotlin = "2.1.20"
+kotlin = "2.2.10"
 kotlinx-cli = "0.3.6"
+ksp = "2.2.10-2.0.2"
 coreKtx = "1.16.0"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -17,11 +18,14 @@ material = "1.12.0"
 jetbrainsKotlinJvm = "2.0.0"
 konfetti-compose = "2.0.5"
 asset-delivery-ktx = "2.3.0"
+navigation-compose = "2.9.5"
+hilt = "2.52"
+androidx-hilt = "1.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-asset-delivery-ktx = {group="com.google.android.play", name="asset-delivery-ktx", version.ref="asset-delivery-ktx"}
+asset-delivery-ktx = { group = "com.google.android.play", name = "asset-delivery-ktx", version.ref = "asset-delivery-ktx" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -40,8 +44,11 @@ kotlinx-cli = { group = "org.jetbrains.kotlinx", name = "kotlinx-cli", version.r
 mapbox-sdk-turf = { group = "com.mapbox.mapboxsdk", name = "mapbox-sdk-turf", version.ref = "mapbox-sdk-turf" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
-konfetti-compose = { group = "nl.dionsegijn", name="konfetti-compose", version.ref="konfetti-compose"}
-
+konfetti-compose = { group = "nl.dionsegijn", name = "konfetti-compose", version.ref = "konfetti-compose" }
+androidx-navigation = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidx-hilt" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -49,4 +56,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "jetbrainsKotlinJvm" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
